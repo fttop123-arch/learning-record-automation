@@ -20,7 +20,7 @@ class WebTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.template = next(ROOT.glob("*작업용.xlsx"))
-        cls.pdf = next(ROOT.glob("*.pdf"))
+        cls.pdf = (ROOT / "(샘플)2026년 시청 소방교육 참석자 상시학습 인정 알림.pdf")
         cls.attendees = next(ROOT.glob("*명단.xlsx"))
         cls.employees = ROOT / "tests/fixtures/employees.xlsx"
 

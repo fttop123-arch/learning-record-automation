@@ -8,3 +8,6 @@ node_modules/
 .npm-cache/
 site-demo/test-output/
 /테스트용_직원개인식별번호.xlsx
+
+site-demo/dist/demo-access.json
+site-demo/dist/demo-access.tmp

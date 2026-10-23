@@ -137,7 +137,7 @@ class EmployeeGenerationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.template = next(ROOT.glob("*작업용.xlsx"))
-        cls.notice = parse_notice(next(ROOT.glob("*.pdf")))
+        cls.notice = parse_notice((ROOT / "(샘플)2026년 시청 소방교육 참석자 상시학습 인정 알림.pdf"))
         cls.roster = parse_attendees(next(ROOT.glob("*명단.xlsx")))
         cls.reference = load_reference(cls.template, cls.notice["type_raw"])
 
@@ -185,7 +185,7 @@ class EmployeeGenerationTests(unittest.TestCase):
 
     def test_cli_generate_with_virtual_employees(self):
         with TemporaryDirectory() as directory:
-            for source in list(ROOT.glob("*.pdf")) + list(ROOT.glob("*.xlsx")):
+            for source in [ROOT / "(샘플)2026년 시청 소방교육 참석자 상시학습 인정 알림.pdf", ROOT / "(샘플)2026년 시청 소방교육 참석자 명단.xlsx", self.template]:
                 shutil.copyfile(source, Path(directory) / source.name)
             run = subprocess.run(
                 [sys.executable, "-B", str(ROOT / "src" / "preview.py"),

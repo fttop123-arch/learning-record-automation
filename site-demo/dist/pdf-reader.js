@@ -1,4 +1,4 @@
-import {parseNotice} from './core.js';
+import {extractCandidates as parseNotice} from './notice-review.js';
 import {withDeadline} from './async-utils.js';
 
 export async function extractPdf(file,{signal,progress=()=>{}}={}){
