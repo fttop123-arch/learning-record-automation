@@ -10,6 +10,10 @@ from zipfile import ZipFile
 from openpyxl import load_workbook
 from openpyxl.formula.translate import Translator
 from openpyxl.utils.datetime import to_excel
+try:
+    from .employee_lookup import matched_employee_id
+except ImportError:
+    from employee_lookup import matched_employee_id
 
 NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 SHEET = "xl/worksheets/sheet1.xml"
@@ -56,7 +60,7 @@ def build_excel(template, notice, attendees, official, required, welfare, partic
         serial = to_excel(date.fromisoformat(notice["date"]))
         generated_rows = []
         for index, attendee in enumerate(attendees, 2):
-            values = [attendee["name"], None, official, None, required, serial, serial,
+            values = [attendee["name"], matched_employee_id(attendee), official, None, required, serial, serial,
                       notice["hours"], notice["minutes"], 1, int(participation),
                       notice["name"], notice["name"], welfare, None, None]
             row_tag = re.search(r'<row\b[^>]*\br="2"[^>]*>', original).group()
@@ -125,7 +129,7 @@ def verify_excel(template, payload, notice, attendees, official, required, parti
         if sheet.max_row != len(attendees) + 1:
             raise ValueError("검증 실패: 실제 데이터 행 수")
         for row, attendee in enumerate(attendees, 2):
-            expected = [attendee["name"], None, official,
+            expected = [attendee["name"], matched_employee_id(attendee), official,
                         f'=INDIRECT("유형코드"&MATCH(C{row},교육유형명,0))', required,
                         date.fromisoformat(notice["date"]), date.fromisoformat(notice["date"]),
                         notice["hours"], notice["minutes"], 1, int(participation),
@@ -148,6 +152,18 @@ def confirm_and_generate(template, output_dir, notice, roster, reference, method
     print("참여유형: 0 = 오프라인교육(대면), 1 = 온라인교육(비대면)")
     print("이번 샘플을 대면교육으로 확인하셨다면 0을 선택해주세요.")
     participation = ask_choice("참여유형", ("0", "1"))
+    destination = generate_result(template, output_dir, notice, roster, reference, method_code, required, welfare, participation)
+    print(f"\n결과 Excel 생성: {destination.resolve()}")
+    matched_count = sum(matched_employee_id(a) is not None for a in roster["attendees"])
+    print(f"검증 완료: 대상자 {len(roster['attendees'])}명, 개인식별번호 매칭 {matched_count}명 / 빈셀 {len(roster['attendees'])-matched_count}명, 행별 수식 및 양식 보존")
+    if matched_count < len(roster["attendees"]):
+        print("개인식별번호 빈셀이 남아 있으므로 내부자료 확인 전 등록 완료본이 아닙니다.")
+    print("D열 수식 결과는 Excel에서 열 때 재계산됩니다. 현재 검증은 수식과 참조 구조 검증입니다.")
+
+
+def generate_result(template, output_dir, notice, roster, reference, method_code, required, welfare, participation):
+    """CLI와 웹이 함께 쓰는 검증·생성·충돌 없는 저장 경로."""
+    validate_ready(roster, reference, method_code)
     payload = build_excel(template, notice, roster["attendees"], reference["official"], required, welfare, participation)
     verify_excel(template, payload, notice, roster["attendees"], reference["official"], required, participation)
     output_dir = Path(output_dir)
@@ -165,7 +181,4 @@ def confirm_and_generate(template, output_dir, notice, roster, reference, method
             index += 1
     # 저장된 실제 파일도 다시 검증한다.
     verify_excel(template, destination.read_bytes(), notice, roster["attendees"], reference["official"], required, participation)
-    print(f"\n결과 Excel 생성: {destination.resolve()}")
-    print(f"검증 완료: 대상자 {len(roster['attendees'])}명, 개인식별번호 빈셀, 행별 수식, 입력값 및 양식 보존")
-    print("개인식별번호가 비어 있으므로 내부자료 연계 전 등록 완료본이 아닙니다.")
-    print("D열 수식 결과는 Excel에서 열 때 재계산됩니다. 현재 검증은 수식과 참조 구조 검증입니다.")
+    return destination

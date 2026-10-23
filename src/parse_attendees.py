@@ -11,7 +11,10 @@ def normalize_space(value):
     return re.sub(r"\s+", "", str(value or ""))
 
 
-def parse_attendees(path):
+def parse_attendees(path, target_department=TARGET_DEPARTMENT):
+    target_department = str(target_department).strip()
+    if not target_department:
+        raise ValueError("대상 부서를 입력해주세요.")
     workbook = load_workbook(path, read_only=True, data_only=True)
     try:
         candidates = []
@@ -29,9 +32,9 @@ def parse_attendees(path):
             if not any(values.values()):
                 continue
             total += 1
-            if normalize_space(values["소속"]) != TARGET_DEPARTMENT:
+            if normalize_space(values["소속"]) != normalize_space(target_department):
                 continue
-            attendees.append({"department": TARGET_DEPARTMENT, "rank": values["직급"], "name": values["성명"], "row": row_number})
+            attendees.append({"department": target_department, "rank": values["직급"], "name": values["성명"], "row": row_number})
         counts = Counter(normalize_space(a["name"]) for a in attendees if a["name"])
         for attendee in attendees:
             attendee["status"] = (
