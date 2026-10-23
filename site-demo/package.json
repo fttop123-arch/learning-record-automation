@@ -1,0 +1,7 @@
+{
+  "name": "learning-record-sites-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {"test": "node --test tests/*.test.mjs"},
+  "devDependencies": {"@xmldom/xmldom": "^0.8.11", "jszip": "^3.10.1"}
+}

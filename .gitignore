@@ -4,3 +4,7 @@ output/
 .env
 .venv/
 .web-packages/
+node_modules/
+.npm-cache/
+site-demo/test-output/
+/테스트용_직원개인식별번호.xlsx
