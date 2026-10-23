@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>서무_상시학습 등록 자동화</title><link rel="stylesheet" href="./style.css"><script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>서무_상시학습 등록 자동화</title><link rel="stylesheet" href="./style.css"><script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261023-2"></script></head>
 <body>
 <header><div class="brand"><span class="mark" aria-hidden="true">경주</span><span>서무업무 지원<span class="brand-sub">상시학습 교육실적</span></span></div><span class="local">공개 시연판</span></header>
 <main>
@@ -14,7 +14,7 @@
       <label class="file-card"><span class="file-kind">XLSX <b>필수</b></span><strong>교육 참석자 명단</strong><span>소속·직급·성명이 포함된 명단</span><input type="file" name="attendees" accept=".xlsx" aria-label="참석자 명단 Excel"><small class="filename">파일을 선택해주세요</small></label>
       <label class="file-card"><span class="file-kind">XLSX <b class="optional">선택</b></span><strong>개인식별번호 명부</strong><span>미첨부 시 개인식별번호는 빈셀로 생성</span><input type="file" name="employees" accept=".xlsx" aria-label="개인식별번호 명부 Excel"><small class="filename">선택 첨부</small></label>
     </div>
-    <div class="upload-footer"><label class="department">대상 부서<input name="department" id="department" value="디지털정책과" maxlength="80" required></label><p class="muted">PDF·XLSX / 파일당 최대 20MB<br>선택 파일은 브라우저 메모리에서만 처리됩니다.</p><button id="analyze-button" type="submit">분석하기 <span aria-hidden="true">→</span></button></div>
+    <div class="upload-footer"><label class="department">대상 부서<input name="department" id="department" list="department-options" value="디지털정책과" maxlength="80" required></label><datalist id="department-options"></datalist><p class="muted">PDF·XLSX / 파일당 최대 20MB<br>선택 파일은 브라우저 메모리에서만 처리됩니다.</p><button id="analyze-button" type="submit">분석하기 <span aria-hidden="true">→</span></button></div>
   </form>
   <div id="analysis" hidden>
     <section class="card"><div class="section-title"><div><span class="step">02</span><h2>교육정보 및 대상자 분석</h2></div><span class="badge">분석 완료</span></div><dl id="education" class="education"></dl><details><summary>공문 원문 및 자동 입력값 확인</summary><dl id="source-info" class="education detail-grid"></dl></details>
@@ -27,5 +27,5 @@
   </div>
   <section id="completion" class="card completion" hidden><div class="section-title"><div><span class="step">04</span><h2>처리 완료</h2></div><span class="badge">생성·검증 완료</span></div><h3 id="completed-education"></h3><div id="summary" class="summary"></div><div class="download-row"><div><span class="muted">결과 파일</span><p id="result-filename"></p></div><a id="download" class="button" href="#">결과 Excel 다운로드 ↓</a></div><p class="muted">결과는 서버에 저장되지 않습니다. 초기화하거나 페이지를 닫으면 다운로드 링크가 해제됩니다.</p></section>
   <p id="live-status" role="status" aria-live="polite"></p>
-  <footer>교육·시연용 · 상시학습 등록 자동화 <span>원본 보존 / 외부 API 전송 없음</span></footer>
+  <footer>교육·시연용 · 상시학습 등록 자동화 v1.1 <span>원본 보존 / 외부 API 전송 없음</span></footer>
 </main></body></html>

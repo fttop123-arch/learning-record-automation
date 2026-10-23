@@ -37,7 +37,9 @@ export function filterAttendees(sheets, department) {
     if(spaces(r[dc])===spaces(department)) attendees.push({department,rank:trim(r[rc]),name:trim(r[nc]),row:index+i+2,status:'대상 부서 일치'});
   });
   for(const a of attendees) a.status=!a.name?'성명 누락: 사용자 확인 필요':attendees.filter(b=>spaces(a.name)===spaces(b.name)).length>1?'동명이인 확인 필요':!a.rank?'직급 누락: 사용자 확인 필요':'대상 부서 일치';
-  return {total,attendees,sheet:sheet.name};
+  const departments=[...new Set(sheet.rows.slice(index+1).map(r=>trim(r[dc])).filter(Boolean))];
+  const suggestions=attendees.length?[]:departments.filter(d=>spaces(d).includes(spaces(department)));
+  return {total,attendees,sheet:sheet.name,departments,suggestions};
 }
 export function employeeDirectory(sheets) {
   if(!sheets) return {mode:'no_file',records:[]};

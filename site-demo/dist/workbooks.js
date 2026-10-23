@@ -31,8 +31,8 @@ export async function readWorkbook(data){
  }
  return {zip,workbook,sheets};
 }
-export async function loadReference(){
- const response=await fetch('./reference.xlsx');if(!response.ok)throw Error('시연용 기준 양식을 읽을 수 없습니다.');
+export async function loadReference({signal}={}){
+ const response=await fetch('./reference.xlsx',{signal});if(!response.ok)throw Error('시연용 기준 양식을 읽을 수 없습니다.');
  const data=await response.arrayBuffer(),book=await readWorkbook(data);
  const name=els(book.workbook,'definedName').find(n=>n.getAttribute('name')==='교육유형명');
  const match=name?.textContent.match(/^'?교육유형'?!\$A\$(\d+):\$A\$(\d+)$/);

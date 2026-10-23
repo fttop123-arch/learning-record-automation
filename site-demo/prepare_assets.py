@@ -2,6 +2,7 @@
 from pathlib import Path
 import re
 import shutil
+import gzip
 from zipfile import ZipFile, ZIP_DEFLATED
 import xml.etree.ElementTree as ET
 
@@ -22,6 +23,7 @@ def main():
         ("pdfjs-dist/LICENSE", "PDFjs-LICENSE.txt"),
     ]:
         shutil.copyfile(PACKAGES / source, vendor / destination)
+    (vendor / 'pdf-worker.gz.bin').write_bytes(gzip.compress((vendor / 'pdf.worker.mjs').read_bytes(),mtime=0))
     template = ROOT / "(샘플)교육실적등록 양식_작업용.xlsx"
     with ZipFile(template) as original:
         text = original.read("xl/worksheets/sheet1.xml").decode("utf-8")
@@ -70,13 +72,15 @@ def main():
                 result.writestr(item, data)
     shutil.copyfile(ROOT / "static/style.css", DIST / "style.css")
     html = (ROOT / 'templates/index.html').read_text(encoding='utf-8')
-    html = html.replace('href="/static/style.css"','href="./style.css"').replace('<script src="/static/app.js" defer></script>', '<script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js"></script>')
+    html = html.replace('href="/static/style.css"','href="./style.css"').replace('<script src="/static/app.js" defer></script>', '<script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261023-2"></script>')
+    html = html.replace('id="department" value=', 'id="department" list="department-options" value=')
+    html = html.replace('</label><p class="muted">PDF·XLSX', '</label><datalist id="department-options"></datalist><p class="muted">PDF·XLSX')
     html = html.replace('로컬 업무 도구', '공개 시연판').replace('기준 양식: 프로젝트 기본 양식 사용', '기준 양식: 시연용 비식별 양식 사용')
     html = html.replace('<form id="upload-form"', '<aside class="demo-notice"><strong>교육·시연용 시스템입니다. 실제 개인정보 및 내부자료를 업로드하지 마세요.</strong><p>파일은 이 브라우저 안에서만 분석하며 서버로 전송하거나 저장하지 않습니다.</p><button type="button" id="sample-button">샘플 데이터로 체험</button><button type="button" id="reset-button" class="secondary">입력·결과 초기화</button></aside><form id="upload-form"')
     html = html.replace('업로드 파일은 분석 후 자동 삭제됩니다.', '선택 파일은 브라우저 메모리에서만 처리됩니다.')
     html = html.replace('원본 양식은 유지하고 별도 Excel을 생성합니다.', '시연용 양식 복사본을 브라우저에서 생성합니다.')
     html = html.replace('다운로드 링크는 생성 후 30분 동안 유효합니다. 결과 파일은 output 폴더에도 저장됩니다.', '결과는 서버에 저장되지 않습니다. 초기화하거나 페이지를 닫으면 다운로드 링크가 해제됩니다.')
-    html = html.replace('경주시 서무업무 · 상시학습 등록 지원', '교육·시연용 · 상시학습 등록 자동화')
+    html = html.replace('경주시 서무업무 · 상시학습 등록 지원', '교육·시연용 · 상시학습 등록 자동화 v1.1')
     (DIST / 'index.html').write_text(html,encoding='utf-8')
     with (DIST / 'style.css').open('a',encoding='utf-8') as style:
         style.write('\n.demo-notice{background:#eaf2ff;border:1px solid #c9daf4;border-radius:10px;padding:20px 24px;margin-bottom:22px}.demo-notice strong{font-size:14px;color:#244a7b}.demo-notice p{font-size:12px;color:#526b8e;margin:7px 0 14px}.secondary{background:#fff;color:#245dac;border:1px solid #bfd0e9;margin-left:8px}.demo-notice button{font-size:12px;padding:9px 14px}\n')

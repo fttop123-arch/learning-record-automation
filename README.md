@@ -29,7 +29,7 @@
 
 공개 서버에는 루트의 `테스트용_직원개인식별번호.xlsx`, 공문/참석자 샘플 원본, output, .env를 포함하지 않습니다. Sites는 정적 파일 및 Workers 서버 코드를 지원하지만 이 시연판에는 서버 코드를 사용하지 않았습니다. Python/FastAPI 서버를 Sites로 옮기지 않았습니다.
 
-시연판 구성·검증 방법은 [site-demo/README.md](site-demo/README.md)에 있습니다. 기존 Python 테스트 39개와 시연판 Node 테스트 16개, 총 55개 통과. 실제 공개 URL의 샘플 모드·Chrome 다운로드 파일도 검증했습니다.
+시연판 구성·검증 방법은 [site-demo/README.md](site-demo/README.md)에 있습니다. 기존 Python 테스트 39개와 시연판 Node 테스트 21개, 총 60개 통과. 실제 공개 URL의 샘플 모드·Chrome 다운로드 파일도 검증했습니다.
 
 ## 웹앱 실행과 사용
 

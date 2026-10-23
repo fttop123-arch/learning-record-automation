@@ -5,6 +5,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {DOMParser} from '@xmldom/xmldom';
 import JSZip from 'jszip';
+import {gunzipSync} from 'node:zlib';
+import {withDeadline} from '../dist/async-utils.js';
 import {parseNotice,filterAttendees,employeeDirectory,lookupEmployee,matchType,demoData} from '../dist/core.js';
 import {readWorkbook,generateExcel} from '../dist/workbooks.js';
 globalThis.DOMParser=DOMParser;globalThis.JSZip=JSZip;
@@ -35,3 +37,8 @@ test('XLSX 생성·행별 수식·O/P 빈셀·양식 보존',async()=>{
 test('파일 미첨부 B열 빈셀',async()=>{const a=analysis();for(const person of a.roster.attendees)person.employee_lookup=lookupEmployee(employeeDirectory(null),person.department,person.name);const b=await readWorkbook(await generateExcel(template,a,{required:'Y',welfare:'N',participation:'1'}));assert.equal(b.sheets[0].rows[1][1],null);assert.equal(b.sheets[0].rows[1][4],'Y');assert.equal(b.sheets[0].rows[1][10],1);});
 test('사회복지교육 Y는 생성 차단',async()=>assert.rejects(()=>generateExcel(template,analysis(),{required:'N',welfare:'Y',participation:'0'})));
 test('공개 UI 안내와 브라우저 내부 처리',async()=>{const html=await fs.readFile(path.join(root,'site-demo/dist/index.html'),'utf8'),app=await fs.readFile(path.join(root,'site-demo/dist/app.js'),'utf8');assert.ok(html.includes('실제 개인정보 및 내부자료를 업로드하지 마세요.'));assert.ok(html.includes('샘플 데이터로 체험'));assert.ok(!app.includes('POST'));assert.ok(!app.includes('localStorage'));});
+test('노인복지는 자동 매칭 없이 노인복지과 안내',()=>{const sheets=[{name:'Sheet1',rows:[['소속','직급','성명'],['노인복지과','사회복지8급','가상직원1'],['노인복지과','사회복지6급','가상직원2']]}];const partial=filterAttendees(sheets,'노인복지');assert.equal(partial.attendees.length,0);assert.deepEqual(partial.suggestions,['노인복지과']);assert.equal(filterAttendees(sheets,'노인복지과').attendees.length,2);});
+test('끝나지 않는 분석도 제한시간 후 종료',async()=>{let stopped=false;await assert.rejects(withDeadline(new Promise(()=>{}),{label:'공문 PDF',timeoutMs:10,onStop:()=>{stopped=true;}}),/처리 시간이 초과/);assert.equal(stopped,true);});
+test('분석 중 취소가 즉시 끝남',async()=>{const c=new AbortController();const pending=withDeadline(new Promise(()=>{}),{signal:c.signal});c.abort();await assert.rejects(pending,/취소/);});
+test('정상 작업은 제한시간 없이 값 반환',async()=>assert.equal(await withDeadline(Promise.resolve('완료'),{timeoutMs:100}),'완료'));
+test('압축 PDF Worker 복원과 크기 검증',async()=>{const raw=await fs.readFile(path.join(root,'site-demo/dist/vendor/pdf.worker.mjs')),packed=await fs.readFile(path.join(root,'site-demo/dist/vendor/pdf-worker.gz.bin'));assert.deepEqual(gunzipSync(packed),raw);assert.ok(packed.length<500000);});
