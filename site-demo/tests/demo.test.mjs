@@ -163,3 +163,10 @@ test('시연 암호: 올바른 암호·오입력·한글 검증',async()=>{
  const salt='0123456789abcdef0123456789abcdef',password='가상테스트-only';const config={salt,iterations:210000,digest:pbkdf2Sync(password,Buffer.from(salt,'hex'),210000,32,'sha256').toString('hex')};
  assert.equal(await checkPassword(password,config),true);assert.equal(await checkPassword('wrong',config),false);
 });
+
+const {PDF_WORKER_COMPAT}=await import('../dist/pdf-reader.js');
+const {runInNewContext}=await import('node:vm');
+test('구형 브라우저 PDF Worker: toHex 부재 호환 및 기존 함수 유지',()=>{
+ assert.equal(runInNewContext("delete Uint8Array.prototype.toHex;"+PDF_WORKER_COMPAT+"new Uint8Array([0,15,16,255]).toHex()"),'000f10ff');
+ assert.equal(runInNewContext("Uint8Array.prototype.toHex=function(){return 'native';};"+PDF_WORKER_COMPAT+"new Uint8Array().toHex()"),'native');
+});

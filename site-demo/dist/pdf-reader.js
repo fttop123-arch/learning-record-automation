@@ -1,3 +1,5 @@
+// PDF.js fingerprint 계산에서 사용하는 최신 API의 구형 브라우저 대체 구현.
+export const PDF_WORKER_COMPAT = `if(typeof Uint8Array.prototype.toHex!=='function'){Object.defineProperty(Uint8Array.prototype,'toHex',{configurable:true,writable:true,value:function(){let hex='';for(let i=0;i<this.length;i++)hex+=this[i].toString(16).padStart(2,'0');return hex;}});}`;
 import {extractCandidates as parseNotice} from './notice-review.js';
 import {withDeadline} from './async-utils.js';
 
@@ -23,7 +25,7 @@ export async function extractPdf(file,{signal,progress=()=>{}}={}){
    }else source=new TextDecoder().decode(bytes);
    if(controller.signal.aborted)throw Error('PDF 분석이 취소되었습니다.');
    progress('PDF 문서 열기');
-   workerUrl=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));
+   workerUrl=URL.createObjectURL(new Blob([PDF_WORKER_COMPAT+'\n'+source],{type:'text/javascript'}));
    port=new Worker(workerUrl,{type:'module'});
    worker=new pdfjs.PDFWorker({port});
    task=pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),worker,isEvalSupported:false,useSystemFonts:true});
