@@ -72,7 +72,7 @@ def main():
                 result.writestr(item, data)
     shutil.copyfile(ROOT / "static/style.css", DIST / "style.css")
     html = (ROOT / 'templates/index.html').read_text(encoding='utf-8')
-    html = html.replace('href="/static/style.css"','href="./style.css"').replace('<script src="/static/app.js" defer></script>', '<script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261023-3"></script>')
+    html = html.replace('href="/static/style.css"','href="./style.css"').replace('<script src="/static/app.js" defer></script>', '<script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261024-columns"></script>')
     html = html.replace('<label class="department">대상 부서<input name="department" id="department" value="디지털정책과" maxlength="80" required></label>', '<div class="department-picker"><label class="department" for="department-search">부서명 검색<input id="department-search" placeholder="예: 노인, 노 인복지과" maxlength="80" autocomplete="off" disabled></label><label class="department" for="department-select">대상 부서 선택<select id="department-select" name="department" required disabled><option value="">참석자 명단을 먼저 선택해주세요</option></select></label><p id="department-status" class="department-status" role="status">참석자 Excel을 선택하면 부서 목록을 먼저 읽습니다.</p></div>')
     html = html.replace('로컬 업무 도구', '공개 시연판').replace('기준 양식: 프로젝트 기본 양식 사용', '기준 양식: 시연용 비식별 양식 사용')
     html = html.replace('<span class="local">', '<a class="home-link" href="./index.html">← 업무도우미 홈</a><span class="local">')

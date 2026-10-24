@@ -1,16 +1,18 @@
+import {createColumnMapping} from './column-mapping.js?v=20261024-columns';
 import {workflowStep,paintProgress} from './progress.js';
 import {requireDemoAccess} from './demo-access.js';
 await requireDemoAccess();
 import {createReview} from './notice-review.js';
 import {attachFileDrop,preventFileNavigation} from './file-drop.js';
 import {fileError,uploadIssues} from './file-validation.js';
-import {filterAttendees,employeeDirectory,lookupEmployee,matchType,demoData,spaces,listDepartments,searchDepartments,requireDepartmentChoice,initialDepartment} from './core.js';
+import {filterAttendees,employeeDirectory,lookupEmployee,matchType,demoData,spaces,listDepartments,searchDepartments,requireDepartmentChoice,initialDepartment} from './core.js?v=20261024-columns';
 import {readWorkbook,loadReference,generateExcel} from './workbooks.js';
 import {extractNotice} from './notice-reader.js';
 import {withDeadline} from './async-utils.js';
 const $=s=>document.querySelector(s);
 if(['127.0.0.1','localhost'].includes(location.hostname))$('header .local').textContent='로컬 테스트';
 let analysis=null,busy=false,blobUrl=null,referencePromise=null,activeController=null,operationId=0;
+let attendeeMapping=null;
 let attendeeBook=null,attendeeFile=null,departments=[],rosterLoading=false,rosterLoadId=0;
 function populateDepartments(query='',selected=''){
  const candidates=searchDepartments(departments,query),select=$('#department-select');
@@ -21,14 +23,21 @@ function populateDepartments(query='',selected=''){
 }
 function setDepartments(names){departments=names;$('#department-search').value='';populateDepartments('',initialDepartment(names));}
 async function loadAttendeeFile(file){
- const id=++rosterLoadId;attendeeBook=null;attendeeFile=null;departments=[];rosterLoading=!!file;$('#department-search').value='';populateDepartments();sync();
+ document.querySelector('#column-mapping')?.remove();attendeeMapping=null;
+ const id=++rosterLoadId;attendeeBook=null;attendeeFile=null;attendeeMapping=null;document.querySelector('#column-mapping')?.remove();departments=[];rosterLoading=!!file;$('#department-search').value='';populateDepartments();sync();
  if(!file)return;
  try{
   if(!file.name.toLowerCase().endsWith('.xlsx')||!file.size||file.size>20*1024*1024)throw Error('참석자 명단은 20MB 이하의 비어 있지 않은 XLSX 파일을 선택해주세요.');
   const book=await withDeadline(async()=>readWorkbook(await file.arrayBuffer()),{label:'참석자 부서 목록',timeoutMs:28000});
   if(id!==rosterLoadId)return;
-  const names=listDepartments(book.sheets);if(!names.length)throw Error('참석자 명단에서 부서를 찾지 못했습니다.');
-  attendeeBook=book;attendeeFile=file;rosterLoading=false;setDepartments(names);$('#live-status').textContent='부서 목록을 읽었습니다. 대상 부서를 선택하고 나머지 파일을 첨부한 뒤 분석해주세요.';
+  attendeeBook=book;attendeeFile=file;rosterLoading=false;
+  const panel=createColumnMapping(book.sheets,mapping=>{
+   if(id!==rosterLoadId)return;attendeeMapping=mapping;invalidate();
+   try{const names=mapping?listDepartments(book.sheets,mapping):[];setDepartments(names);$('#live-status').textContent=mapping?'컬럼 연결이 적용되었습니다. 대상 부서를 선택해주세요.':'부서·성명 컬럼을 연결해주세요.';if(mapping&&!names.length)$('#department-status').textContent='선택한 부서 컬럼에 부서 값이 없습니다. 머리글 행과 컬럼 연결을 확인해주세요.';}
+   catch(error){attendeeMapping=null;setDepartments([]);$('#live-status').textContent=error.message;}
+   sync();
+  });
+  $('.file-grid').after(panel);
  }catch(error){if(id===rosterLoadId){rosterLoading=false;populateDepartments();const input=document.querySelector('input[name="attendees"]'),message=document.getElementById('attendees-file-error');message.textContent=error.message;message.hidden=false;input.setAttribute('aria-invalid','true');input.parentElement.classList.add('invalid-file');$('#live-status').textContent=error.message;}}
  finally{if(id===rosterLoadId){rosterLoading=false;sync();}}
 }
@@ -90,8 +99,9 @@ $('#upload-form').addEventListener('submit',async event=>{
   for(const {name,message}of issues){const input=document.querySelector(`input[name="${name}"]`),hint=document.getElementById(`${name}-file-error`);hint.textContent=message;hint.hidden=false;input.setAttribute('aria-invalid','true');input.parentElement.classList.add('invalid-file');}
   const input=document.querySelector(`input[name="${issues[0].name}"]`);input.parentElement.scrollIntoView({behavior:'smooth',block:'center'});input.focus({preventScroll:true});$('#live-status').textContent=issues.map(i=>i.message).join(' ');return;
  }
+ if(!attendeeMapping){$('#column-mapping')?.scrollIntoView({behavior:'smooth',block:'center'});$('#live-status').textContent='참석자 명단의 부서·성명 컬럼을 연결하고 적용해주세요.';return;}
  let department;
- try{department=requireDepartmentChoice(listDepartments(attendeeBook?.sheets||[]),data.get('department'));}catch(error){$('#department-status').textContent=error.message;$('#department-select').scrollIntoView({behavior:'smooth',block:'center'});if(!$('#department-select').disabled)$('#department-select').focus({preventScroll:true});$('#live-status').textContent=error.message;return;}
+ try{department=requireDepartmentChoice(listDepartments(attendeeBook?.sheets||[],attendeeMapping),data.get('department'));}catch(error){$('#department-status').textContent=error.message;$('#department-select').scrollIntoView({behavior:'smooth',block:'center'});if(!$('#department-select').disabled)$('#department-select').focus({preventScroll:true});$('#live-status').textContent=error.message;return;}
  const id=++operationId;activeController=new AbortController();const signal=activeController.signal;
  busy=true;sync();$('#live-status').textContent='브라우저 안에서 파일을 분석하고 있습니다…';
  const stages=new Map();
@@ -103,7 +113,7 @@ $('#upload-form').addEventListener('submit',async event=>{
   jobs.forEach((job,i)=>{if(job.status==='rejected')errors.push(['공문 분석 실패','참석자 명단 분석 실패','개인식별번호 명부 분석 실패','기준 양식 로드 실패'][i]+': '+job.reason.message);});
   if(errors.length){failed(errors);return;}
   const [notice,rosterBook,employeeBook,reference]=jobs.map(j=>j.value);
-  finish(notice,filterAttendees(rosterBook.sheets,department),employeeDirectory(employeeBook?.sheets),reference);
+  finish(notice,filterAttendees(rosterBook.sheets,department,attendeeMapping),employeeDirectory(employeeBook?.sheets),reference);
  }catch(e){if(id===operationId)failed([e.message||'파일 분석에 실패했습니다.']);}finally{if(id===operationId){busy=false;activeController=null;sync();}}
 });
 $('#generate-form').addEventListener('submit',async event=>{
@@ -134,7 +144,7 @@ $('#department-search').addEventListener('input',()=>{invalidate();populateDepar
 $('#department-search').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();$('#department-select').focus();}});
 $('#department-select').addEventListener('change',()=>{invalidate();populateDepartments($('#department-search').value,$('#department-select').value);sync();});
 for(const select of document.querySelectorAll('#generate-form select'))select.addEventListener('change',()=>{clearResult();sync();});
-$('#reset-button').addEventListener('click',()=>{++operationId;++rosterLoadId;activeController?.abort();activeController=null;referencePromise=null;busy=false;rosterLoading=false;attendeeBook=null;attendeeFile=null;departments=[];$('#upload-form').reset();$('#generate-form').reset();for(const input of document.querySelectorAll('input[type=file]')){input.removeAttribute('aria-invalid');input.parentElement.classList.remove('invalid-file');input.parentElement.querySelector('.remove-file').hidden=true;input.parentElement.querySelector('.selected-file').classList.remove('has-file');input.parentElement.querySelector('.filename').removeAttribute('title');const message=document.getElementById(`${input.name}-file-error`);message.hidden=true;message.textContent='';}populateDepartments();for(const el of document.querySelectorAll('.filename'))el.textContent='파일을 선택해주세요';invalidate();$('#live-status').textContent='진행 중인 분석을 취소하고 파일 선택과 결과를 초기화했습니다.';});
+$('#reset-button').addEventListener('click',()=>{++operationId;++rosterLoadId;activeController?.abort();activeController=null;referencePromise=null;busy=false;rosterLoading=false;attendeeBook=null;attendeeFile=null;attendeeMapping=null;document.querySelector('#column-mapping')?.remove();departments=[];$('#upload-form').reset();$('#generate-form').reset();for(const input of document.querySelectorAll('input[type=file]')){input.removeAttribute('aria-invalid');input.parentElement.classList.remove('invalid-file');input.parentElement.querySelector('.remove-file').hidden=true;input.parentElement.querySelector('.selected-file').classList.remove('has-file');input.parentElement.querySelector('.filename').removeAttribute('title');const message=document.getElementById(`${input.name}-file-error`);message.hidden=true;message.textContent='';}populateDepartments();for(const el of document.querySelectorAll('.filename'))el.textContent='파일을 선택해주세요';invalidate();$('#live-status').textContent='진행 중인 분석을 취소하고 파일 선택과 결과를 초기화했습니다.';});
 preventFileNavigation(document);
 window.addEventListener('pagehide',()=>{if(blobUrl)URL.revokeObjectURL(blobUrl);});
 sync();

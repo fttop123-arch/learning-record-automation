@@ -180,3 +180,15 @@ test('진행 표시: 첨부→분석→확인→생성 및 재수정·초기화'
  assert.equal(workflowStep({hasAnalysis:true,reviewConfirmed:true,hasResult:false}),2);
  assert.equal(workflowStep({hasAnalysis:true,reviewConfirmed:false}),1);assert.equal(workflowStep({hasAnalysis:false}),0);
 });
+
+const {autoMapping}=await import('../dist/column-mapping.js');
+test('컬럼 연결: 알려진 부서명 별칭 자동 연결·모호한 헤더 수동 전환',()=>{
+ for(const dept of ['부서명','소속부서']){const sheets=[{name:'S',rows:[[dept,'이름'],['디지털정책과','김지현']]}];assert.equal(autoMapping(sheets).departmentColumn,0);assert.equal(listDepartments(sheets)[0],'디지털정책과');}
+ assert.equal(autoMapping([{name:'S',rows:[['부서','소속','성명']]}]),null);
+});
+test('컬럼 연결: 다른 시트·머리글 행·알 수 없는 이름·원본 행 유지',()=>{
+ const sheets=[{name:'안내',rows:[['설명']]},{name:'출석부',rows:[['제목'],['조직단위','참여자','등급'],['디지털정책과','김지현','9급'],['다른부서','김지현','6급']]}];
+ const mapping={sheetIndex:1,headerRow:1,departmentColumn:0,nameColumn:1,rankColumn:2};
+ assert.equal(autoMapping(sheets),null);assert.deepEqual(listDepartments(sheets,mapping),['디지털정책과','다른부서']);const r=filterAttendees(sheets,'디지털정책과',mapping);assert.equal(r.attendees.length,1);assert.equal(r.attendees[0].row,3);assert.equal(r.attendees[0].rank,'9급');
+ assert.throws(()=>listDepartments(sheets,{...mapping,nameColumn:0}),/서로 다른/);assert.throws(()=>listDepartments(sheets,{...mapping,headerRow:99}),/머리글/);assert.throws(()=>listDepartments(sheets,{...mapping,rankColumn:1}),/직급/);
+});

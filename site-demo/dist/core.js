@@ -21,18 +21,26 @@ export function parseNotice(text) {
   const pad = x => String(x).padStart(2,'0');
   return {name:field('교육명'),date:`${year}-${pad(month)}-${pad(day)}`,start:Number.isFinite(sh)?`${pad(sh)}:${pad(sm)}`:null,end:Number.isFinite(eh)?`${pad(eh)}:${pad(em)}`:null,place:field('교육장소',true),method:field('학습방법'),type_raw:field('교육유형'),hours:Number(duration[1]||0),minutes:Number(duration[2]||0)};
 }
-function attendeeHeader(sheets) {
+export function attendeeHeader(sheets,mapping=null) {
+  if(mapping){
+    const {sheetIndex,headerRow,departmentColumn,nameColumn,rankColumn=-1}=mapping;
+    const sheet=sheets[sheetIndex],row=sheet?.rows[headerRow];
+    if(!Number.isInteger(sheetIndex)||!Number.isInteger(headerRow)||headerRow<0||!row)throw Error('시트와 머리글 행을 확인해주세요.');
+    if(!Number.isInteger(departmentColumn)||!Number.isInteger(nameColumn)||departmentColumn<0||nameColumn<0||departmentColumn>=row.length||nameColumn>=row.length||departmentColumn===nameColumn)throw Error('부서와 성명은 서로 다른 컬럼을 선택해주세요.');
+    if(!Number.isInteger(rankColumn)||rankColumn< -1||rankColumn>=row.length||(rankColumn>=0&&[departmentColumn,nameColumn].includes(rankColumn)))throw Error('직급 컬럼은 부서·성명과 다르게 선택해주세요.');
+    return {sheet,index:headerRow,columns:[departmentColumn,rankColumn,nameColumn]};
+  }
   const headers = [];
   for (const sheet of sheets) sheet.rows.forEach((row,index) => {
     const labels = row.map(spaces);
-    const dc=labels.flatMap((v,i)=>['소속','부서'].includes(v)?[i]:[]),nc=labels.flatMap((v,i)=>['성명','이름'].includes(v)?[i]:[]),rc=labels.flatMap((v,i)=>v==='직급'?[i]:[]);
+    const dc=labels.flatMap((v,i)=>['소속','부서','부서명','소속부서'].includes(v)?[i]:[]),nc=labels.flatMap((v,i)=>['성명','이름'].includes(v)?[i]:[]),rc=labels.flatMap((v,i)=>v==='직급'?[i]:[]);
     if(dc.length===1&&nc.length===1&&rc.length<=1)headers.push({sheet,index,columns:[dc[0],rc[0]??-1,nc[0]]});
   });
   if(headers.length!==1) throw Error('참석자 명단의 소속(부서)·성명(이름) 컬럼을 하나로 확인할 수 없습니다. 직급은 선택 항목입니다.');
   return headers[0];
 }
-export function listDepartments(sheets) {
-  const {sheet,index,columns:[dc]}=attendeeHeader(sheets);
+export function listDepartments(sheets,mapping=null) {
+  const {sheet,index,columns:[dc]}=attendeeHeader(sheets,mapping);
   return [...new Set(sheet.rows.slice(index+1).map(r=>trim(r[dc])).filter(Boolean))];
 }
 export const normalizeDepartmentSearch = value => spaces(trim(value)).replace(/['"‘’“”]/g,'');
@@ -46,10 +54,10 @@ export function requireDepartmentChoice(departments,value) {
   if(!selected||!departments.includes(selected))throw Error('명단에서 읽은 부서 목록에서 대상 부서를 선택해주세요. 검색어만 입력한 상태에서는 분석할 수 없습니다.');
   return selected;
 }
-export function filterAttendees(sheets, department) {
+export function filterAttendees(sheets, department,mapping=null) {
   department = trim(department);
   if (!department) throw Error('대상 부서를 입력해주세요.');
-  const {sheet,index,columns:[dc,rc,nc]} = attendeeHeader(sheets);
+  const {sheet,index,columns:[dc,rc,nc]} = attendeeHeader(sheets,mapping);
   const attendees=[]; let total=0;
   sheet.rows.slice(index+1).forEach((r,i)=>{
     if(![r[dc],r[rc],r[nc]].some(v=>String(v??'').trim())) return;
