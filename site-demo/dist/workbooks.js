@@ -1,5 +1,6 @@
-import {learningMethod} from './methods.js?v=20261024-default-hours';
-import {personDuration,registrationPlan} from './durations.js?v=20261024-default-hours';
+import {personDates} from './dates.js?v=20261024-period';
+import {learningMethod} from './methods.js?v=20261024-period';
+import {personDuration,registrationPlan} from './durations.js?v=20261024-period';
 /* XLSX 원본 ZIP의 필요한 셀만 변경. 외부 서버 요청이나 파일 저장 API 없음. */
 const MAIN='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const els=(node,name)=>Array.from(node.getElementsByTagNameNS(MAIN,name));
@@ -29,7 +30,7 @@ export async function readWorkbook(data){
    rows[index]=values;
   }
   for(let i=0;i<rows.length;i++)if(!rows[i])rows[i]=[];
-  sheets.push({name:sheet.getAttribute('name'),rows,file,doc});
+  sheets.push({date1904:['1','true'].includes(els(workbook,'workbookPr')[0]?.getAttribute('date1904')),name:sheet.getAttribute('name'),rows,file,doc});
  }
  return {zip,workbook,sheets};
 }
@@ -54,11 +55,11 @@ export async function generateExcel(template,analysis,choices){
  if(oldFormula!=='INDIRECT("유형코드"&MATCH(C2,교육유형명,0))')throw Error('기준 양식 수식이 예상과 다릅니다.');
  const header=source.match(/<row\b[^>]*\br="1"[^>]*>.*?<\/row>/s)?.[0];
  const sampleTag=source.match(/<row\b[^>]*\br="2"[^>]*>/)?.[0];if(!header||!sampleTag)throw Error('기준 양식 행 구조 확인 필요');
- const n=analysis.notice,serial=Date.parse(n.date+'T00:00:00Z')/86400000+25569;
+ const n=analysis.notice,toSerial=d=>Date.parse(d+'T00:00:00Z')/86400000+25569;
  const rows=attendees.map((a,i)=>{
-  const duration=personDuration(a,n);if(!duration.valid)throw Error(a.name+': 개인별 인정시간을 확인해주세요.');
+  const dates=personDates(a,n),duration=personDuration(a,n);if(!duration.valid)throw Error(a.name+': 개인별 인정시간을 확인해주세요.');
   const r=i+2;const id=a.employee_lookup.status==='matched'?a.employee_lookup.employee_id:null;
-  const values=[a.name,id,analysis.reference.official,null,choices.required,serial,serial,duration.hours,duration.minutes,method.code,Number(choices.participation),n.name,n.name,'N',null,null];
+  const values=[a.name,id,analysis.reference.official,null,choices.required,toSerial(dates.start),toSerial(dates.end),duration.hours,duration.minutes,method.code,Number(choices.participation),n.name,n.name,'N',null,null];
   const cells=[...'ABCDEFGHIJKLMNOP'].map((col,ci)=>{
    const address=col+r,style=styles[col]===null||styles[col]===undefined?'':` s="${styles[col]}"`,base=`<c r="${address}"${style}`;
    if(col==='D')return `${base}><f>${escape(oldFormula.replace('MATCH(C2,',`MATCH(C${r},`))}</f></c>`;
@@ -78,6 +79,7 @@ export async function generateExcel(template,analysis,choices){
  attendees.forEach((a,i)=>{
   const row=sheet.rows[i+1],expected=a.employee_lookup.status==='matched'?a.employee_lookup.employee_id:null;
   const duration=personDuration(a,analysis.notice);if(row[7]!==duration.hours||row[8]!==duration.minutes)throw Error('개인별 시간 검증 실패');
+  const dates=personDates(a,analysis.notice);if(row[5]!==toSerial(dates.start)||row[6]!==toSerial(dates.end))throw Error('교육 시작/종료일 검증 실패');
   if(row[9]!==method.code)throw Error('학습방법 코드 검증 실패');
   if(row[0]!==a.name||row[1]!==expected||row[14]!==null||row[15]!==null)throw Error('결과 셀 검증 실패');
   const cell=els(sheet.doc,'c').find(c=>c.getAttribute('r')===`D${i+2}`);

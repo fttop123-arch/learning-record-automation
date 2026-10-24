@@ -1,4 +1,5 @@
-import {LEARNING_METHODS,learningMethod} from './methods.js?v=20261024-default-hours';
+import {noticePeriod,personDates} from './dates.js?v=20261024-period';
+import {LEARNING_METHODS,learningMethod} from './methods.js?v=20261024-period';
 import {parseNotice,spaces} from './core.js';
 // 제목은 확정값이 아니라 사용자가 검토할 후보로만 제안한다.
 export function titleEducationName(title){
@@ -41,23 +42,24 @@ export function extractCandidates(text,{filename=''}={}){
  for(const key of ['name','date','method','type_raw'])base[key]=candidates[key].length===1?candidates[key][0].value:null;
  const duration=candidates.hours.length===1?candidates.hours[0].value:null;
  base.hours=duration===null?null:Math.floor(duration/60);base.minutes=duration===null?null:duration%60;
+ const period=noticePeriod(text,base.date);base.start_date=period.start;base.end_date=period.end;candidates.start_date=period.evidence.length?period.evidence.map(e=>({value:period.start,evidence:e.evidence})):candidates.date;candidates.end_date=period.evidence.length?period.evidence.map(e=>({value:period.end,evidence:e.evidence})):candidates.date;
  return {...base,candidates,source_text:text};
 }
 export function validReview(n){
- const date=new Date(n.date+'T00:00:00Z');
- return !!n.name?.trim()&&/^\d{4}-\d{2}-\d{2}$/.test(n.date||'')&&!isNaN(date)&&date.toISOString().slice(0,10)===n.date&&Number.isInteger(n.hours)&&n.hours>=0&&Number.isInteger(n.minutes)&&n.minutes>=0&&n.minutes<60&&n.hours*60+n.minutes>0;
+ return !!n.name?.trim()&&personDates({},n).valid&&Number.isInteger(n.hours)&&n.hours>=0&&Number.isInteger(n.minutes)&&n.minutes>=0&&n.minutes<60&&n.hours*60+n.minutes>0;
 }
-export function createReview(notice,names,selected,onConfirm,{individualTimes=false}={}){
+export function createReview(notice,names,selected,onConfirm,{individualTimes=false,individualDates=false}={}){
  const box=document.createElement('section');box.className='card notice-review';
  const title=document.createElement('h2');title.textContent='교육정보 검토·수정';box.append(title);
  const intro=document.createElement('p');intro.textContent='후보가 하나인 값도 원문과 비교해주세요. 여러 후보 또는 미발견 항목은 직접 선택·입력한 뒤 확인합니다.'+(individualTimes?' 명단의 개인별 시간이 우선됩니다. 교육시간 컬럼은 실적인정 시간으로 사용해도 되는지 확인해주세요. 공통시간은 명단에 시간 컬럼이 없을 때만 사용합니다.':'');box.append(intro);
+ if(individualDates){const hint=document.createElement('p');hint.textContent='명단의 개인별 교육시작일·종료일을 사용합니다. 각 대상자의 날짜를 확인해주세요.';box.append(hint);}
  if(individualTimes){const hint=document.createElement('p');hint.textContent='명단의 개인별 인정시간을 사용합니다. 공통시간 입력은 필요하지 않습니다. 단위 없는 숫자는 시간으로 해석합니다(2 = 2시간, 2.5 = 2시간 30분). 머리글에 (분)이 있으면 분으로 해석합니다.';hint.setAttribute('role','status');box.append(hint);}
  const controls={};
- for(const [key,label,type]of [['name','교육명','text'],['date','교육일','date'],['hours','인정시간(시간)','number'],['minutes','인정시간(분)','number'],['method','학습방법','select'],['official','교육유형 공식명','select']]){
+ for(const [key,label,type]of [['name','교육명','text'],['start_date','교육시작일','date'],['end_date','교육종료일','date'],['hours','인정시간(시간)','number'],['minutes','인정시간(분)','number'],['method','학습방법','select'],['official','교육유형 공식명','select']]){
   const wrap=document.createElement('label');wrap.textContent=label;const input=document.createElement(type==='select'?'select':'input');input.name=key;
   if(type==='select')for(const [v,t]of [['','선택해주세요'],...(key==='official'?names.map(n=>[n,n]):LEARNING_METHODS.map(m=>[m.name,`${m.name} (${m.code})`]))]){const o=document.createElement('option');o.value=v;o.textContent=t;input.append(o);}
   else{input.type=type;if(type==='number'){input.min=0;input.step=1;if(key==='minutes')input.max=59;}}
-  input.value=key==='official'?(selected||''):(key==='method'?(learningMethod(notice.method)?.name||''):(notice[key]??''));if(individualTimes&&['hours','minutes'].includes(key)){input.value='';input.disabled=true;wrap.hidden=true;}wrap.append(input);controls[key]=input;
+  input.value=key==='official'?(selected||''):(key==='method'?(learningMethod(notice.method)?.name||''):(notice[key]??(['start_date','end_date'].includes(key)?(notice.start_date===undefined?notice.date:''):'')??''));if(individualTimes&&['hours','minutes'].includes(key)){input.value='';input.disabled=true;wrap.hidden=true;}if(individualDates&&['start_date','end_date'].includes(key)){input.value='';input.disabled=true;wrap.hidden=true;}wrap.append(input);controls[key]=input;
   if(key==='official'){
    wrap.classList.add('official-type-field');input.required=true;input.setAttribute('aria-required','true');input.id='official-type-select';
    const badge=document.createElement('span');badge.className='type-review-badge';wrap.prepend(badge);
@@ -65,12 +67,12 @@ export function createReview(notice,names,selected,onConfirm,{individualTimes=fa
    function updateTypeHint(){const missing=!input.value;wrap.classList.toggle('type-missing',missing);input.setAttribute('aria-invalid',String(missing));badge.textContent=missing?'필수 선택':'선택 확인 필요';hint.textContent=missing?'교육유형을 반드시 선택해주세요. 공문 내용과 비교하여 공식 목록에서 선택한 뒤 확인·적용하세요.':'선택된 교육유형이 공문 내용에 맞는지 확인한 뒤 아래 ‘교육정보 확인·적용’을 눌러주세요.';}
    input.addEventListener('change',updateTypeHint);updateTypeHint();
   }
-  for(const c of notice.candidates?.[key==='official'?'type_raw':key]||[]){const p=document.createElement('p');p.className='candidate-evidence';p.textContent=(c.inferred?(c.source==='filename'?'파일명에서 추정한 교육명입니다.':'문서 제목에서 추정한 교육명입니다.')+' 원문과 비교하여 확인·수정해주세요. 근거: ':'근거: ')+c.evidence;wrap.append(p);if(key==='date'||key==='name'){const choose=document.createElement('button');choose.type='button';choose.textContent='이 후보 사용: '+c.value;choose.addEventListener('click',()=>{input.value=c.value;markDirty();});wrap.append(choose);}}
+  for(const c of notice.candidates?.[key==='official'?'type_raw':key]||[]){const p=document.createElement('p');p.className='candidate-evidence';p.textContent=(c.inferred?(c.source==='filename'?'파일명에서 추정한 교육명입니다.':'문서 제목에서 추정한 교육명입니다.')+' 원문과 비교하여 확인·수정해주세요. 근거: ':'근거: ')+c.evidence;wrap.append(p);if(c.value&&['start_date','end_date','name'].includes(key)){const choose=document.createElement('button');choose.type='button';choose.textContent='이 후보 사용: '+c.value;choose.addEventListener('click',()=>{input.value=c.value;markDirty();});wrap.append(choose);}}
   box.append(wrap);
  }
  const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='추출한 공문 원문 보기';pre.textContent=notice.source_text||'추출된 원문이 없습니다.';details.append(summary,pre);box.append(details);
  const status=document.createElement('p');status.setAttribute('role','status');status.id='review-confirm-message';const confirm=document.createElement('button');confirm.type='button';confirm.id='confirm-education';confirm.className='confirm-education';confirm.textContent='교육정보 확인·적용';
  function markDirty(){status.textContent='수정된 교육정보를 확인·적용해주세요.';onConfirm(null);}
  for(const input of Object.values(controls))input.addEventListener('input',markDirty);
- confirm.addEventListener('click',()=>{const n={...notice};for(const k of ['name','date','method'])n[k]=controls[k].value.trim();n.hours=controls.hours.value===''?null:Number(controls.hours.value);n.minutes=controls.minutes.value===''?null:Number(controls.minutes.value);const official=controls.official.value;if(!names.includes(official)){status.textContent='교육유형 공식명을 먼저 선택해주세요.';controls.official.scrollIntoView({behavior:'smooth',block:'center'});controls.official.focus({preventScroll:true});onConfirm(null);return;}if(!(individualTimes?validReview({...n,hours:1,minutes:0}):validReview(n))||!names.includes(official)||!learningMethod(n.method)){status.textContent='교육명·유효한 교육일·인정시간·학습방법·공식 교육유형을 모두 확인해주세요.';onConfirm(null);return;}status.textContent='교육정보 확인이 적용되었습니다.';onConfirm({notice:n,official});});const actions=document.createElement('div');actions.className='review-actions';actions.append(confirm,status);box.append(actions);return box;
+ confirm.addEventListener('click',()=>{const n={...notice};for(const k of ['name','start_date','end_date','method'])n[k]=controls[k].value.trim();n.hours=controls.hours.value===''?null:Number(controls.hours.value);n.minutes=controls.minutes.value===''?null:Number(controls.minutes.value);n.date=n.start_date;const checked={...n,...(individualTimes?{hours:1,minutes:0}:{}),...(individualDates?{start_date:'2000-01-01',end_date:'2000-01-01'}:{})};const official=controls.official.value;if(!names.includes(official)){status.textContent='교육유형 공식명을 먼저 선택해주세요.';controls.official.scrollIntoView({behavior:'smooth',block:'center'});controls.official.focus({preventScroll:true});onConfirm(null);return;}if(!validReview(checked)||!names.includes(official)||!learningMethod(n.method)){status.textContent='교육명·유효한 교육일·인정시간·학습방법·공식 교육유형을 모두 확인해주세요.';onConfirm(null);return;}status.textContent='교육정보 확인이 적용되었습니다.';onConfirm({notice:n,official});});const actions=document.createElement('div');actions.className='review-actions';actions.append(confirm,status);box.append(actions);return box;
 }

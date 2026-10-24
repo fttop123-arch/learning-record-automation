@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko">
-<head><link rel="stylesheet" href="./demo-access.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>서무_상시학습 등록 자동화</title><link rel="stylesheet" href="./style.css"><script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261024-default-hours"></script><link rel="stylesheet" href="./gyeongju-theme.css"></head>
+<head><link rel="stylesheet" href="./demo-access.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>서무_상시학습 등록 자동화</title><link rel="stylesheet" href="./style.css"><script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261024-period"></script><link rel="stylesheet" href="./gyeongju-theme.css?v=20261024-period"></head>
 <body class="learning-page">
 <header><div class="brand"><img class="learning-logo" src="./assets/gyeongju-ci.png" alt="경주시" width="42" height="44"><span>서무업무 지원<span class="brand-sub">상시학습 교육실적</span></span></div><a class="home-link" href="./index.html">← 업무도우미 홈</a><button type="button" class="learning-help" id="learning-help-button">ⓘ 상시학습 도움말</button><span class="local">공개 시연판</span></header>
 <main>
@@ -18,11 +18,11 @@
   </form>
   <div id="analysis" hidden>
     <section class="card"><div class="section-title"><div><span class="step">02</span><h2>교육정보 및 대상자 분석</h2></div><span class="badge">분석 완료</span></div><dl id="education" class="education"></dl><details><summary>공문 원문 및 자동 입력값 확인</summary><dl id="source-info" class="education detail-grid"></dl></details>
-    <div class="table-title"><h3>등록 대상자 <span id="attendee-count"></span></h3><span class="muted">개인식별번호는 정상 매칭된 경우만 입력됩니다.</span></div><div class="table-wrap"><table><thead><tr><th>성명</th><th>직급</th><th>소속</th><th>개인식별번호</th><th>인정시간 / 출처</th><th>매칭 상태</th></tr></thead><tbody id="attendees"></tbody></table></div></section>
+    <div class="table-title"><h3>등록 대상자 <span id="attendee-count"></span></h3><span class="muted">개인식별번호는 정상 매칭된 경우만 입력됩니다.</span></div><div class="table-wrap"><table><thead><tr><th>성명</th><th>직급</th><th>소속</th><th>개인식별번호</th><th>인정시간 / 출처</th><th>교육기간 / 출처</th><th>매칭 상태</th></tr></thead><tbody id="attendees"></tbody></table></div></section>
     <section class="card"><div class="section-title"><div><span class="step">03</span><h2>사용자 확인</h2></div><span class="muted">교육 내용을 확인한 후 선택해주세요.</span></div><form id="generate-form"><div class="choice-grid">
       <label>필수교육<select name="required"><option value="N">N — 필수교육 해당 없음</option><option value="Y">Y — 필수교육 해당</option></select></label>
       <label>사회복지교육<select name="welfare" id="welfare"><option value="N">N — 사회복지교육 해당 없음</option><option value="Y">Y — 사회복지교육 해당</option></select></label>
-      <label>참여유형<select name="participation"><option value="0">0 — 오프라인교육(대면)</option><option value="1">1 — 온라인교육(비대면)</option></select></label>
+      <label class="participation-field">참여유형 <span class="participation-hint"><strong class="face-to-face">대면</strong> / <strong class="remote-learning">비대면</strong>을 확인해주세요</span><select name="participation"><option value="0">0 — 오프라인교육(대면)</option><option value="1">1 — 온라인교육(비대면)</option></select></label>
     </div><p id="welfare-warning" class="inline-warning" hidden>사회복지교육 Y는 시간·분 추가 확인이 필요하여 현재 생성할 수 없습니다.</p><div class="generate-footer"><p class="muted">시연용 양식 복사본을 브라우저에서 생성합니다.<br>사회복지교육 N은 관련 시간·분을 빈셀로 둡니다.</p><button id="generate-button" type="submit">상시학습 등록 Excel 생성</button></div></form></section>
   </div>
   <section id="completion" class="card completion" hidden><div class="section-title"><div><span class="step">04</span><h2>처리 완료</h2></div><span class="badge">생성·검증 완료</span></div><h3 id="completed-education"></h3><div id="summary" class="summary"></div><div class="download-row"><div><span class="muted">결과 파일</span><p id="result-filename"></p></div><a id="download" class="button" href="#">결과 Excel 다운로드 ↓</a></div><p class="muted">결과는 서버에 저장되지 않습니다. 초기화하거나 페이지를 닫으면 다운로드 링크가 해제됩니다.</p></section>

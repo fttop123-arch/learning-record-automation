@@ -1,5 +1,5 @@
-import {extractCandidates as parseNotice} from './notice-review.js?v=20261024-default-hours';
-import {extractPdf} from './pdf-reader.js?v=20261024-default-hours';
+import {extractCandidates as parseNotice} from './notice-review.js?v=20261024-period';
+import {extractPdf} from './pdf-reader.js?v=20261024-period';
 import {withDeadline} from './async-utils.js';
 const TEXT='urn:oasis:names:tc:opendocument:xmlns:text:1.0';
 function textOf(node){

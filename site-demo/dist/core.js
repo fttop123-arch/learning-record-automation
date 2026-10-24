@@ -1,4 +1,5 @@
-import {rosterDurationColumns} from './durations.js?v=20261024-default-hours';
+import {dateColumns} from './dates.js?v=20261024-period';
+import {rosterDurationColumns} from './durations.js?v=20261024-period';
 /* 브라우저와 Node 테스트에서 함께 사용하는 순수 업무 규칙. */
 export const trim = value => typeof value === 'string' ? value.trim() : '';
 export const spaces = value => String(value ?? '').replace(/\s/g, '');
@@ -60,11 +61,11 @@ export function filterAttendees(sheets, department,mapping=null) {
   if (!department) throw Error('대상 부서를 입력해주세요.');
   const {sheet,index,columns:[dc,rc,nc]} = attendeeHeader(sheets,mapping);
   const attendees=[]; let total=0;
-  const durationColumns=rosterDurationColumns(sheet.rows[index]);
+  const durationColumns=rosterDurationColumns(sheet.rows[index]),dateFields=dateColumns(sheet.rows[index]);
   sheet.rows.slice(index+1).forEach((r,i)=>{
     if(![r[dc],r[rc],r[nc]].some(v=>String(v??'').trim())) return;
     total++;
-    if(spaces(r[dc])===spaces(department)) attendees.push({department,rank:trim(r[rc]),name:trim(r[nc]),row:index+i+2,...(durationColumns.length?{duration_input:{...durationColumns[0],raw:r[durationColumns[0].index]??null,ambiguous:durationColumns.length>1}}:{}),status:'대상 부서 일치'});
+    if(spaces(r[dc])===spaces(department)) attendees.push({department,rank:trim(r[rc]),name:trim(r[nc]),row:index+i+2,...(dateFields.length?{date_input:{date1904:!!sheet.date1904,fields:dateFields.map(f=>({...f,raw:r[f.index]??null}))}}:{}),...(durationColumns.length?{duration_input:{...durationColumns[0],raw:r[durationColumns[0].index]??null,ambiguous:durationColumns.length>1}}:{}),status:'대상 부서 일치'});
   });
   for(const a of attendees) a.status=!a.name?'성명 누락: 사용자 확인 필요':attendees.filter(b=>spaces(a.name)===spaces(b.name)).length>1?'동명이인 확인 필요':'대상 부서 일치';
   const departments=[...new Set(sheet.rows.slice(index+1).map(r=>trim(r[dc])).filter(Boolean))];

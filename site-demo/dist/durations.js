@@ -1,3 +1,4 @@
+import {personDates} from './dates.js?v=20261024-period';
 // 단위가 명확한 값만 사용하며 빈 개인시간을 공통값으로 대체하지 않는다.
 export function parseDuration(value,unit='',allowZero=false){
  const raw=String(value??'').trim();if(!raw)return null;
@@ -25,6 +26,7 @@ export function registrationPlan(attendees,notice){
  for(const person of attendees){const duration=personDuration(person,notice),who=(person.name||'(성명 없음)')+(person.row?` (명단 ${person.row}행)`:'');
   if(!duration.valid){issues.push(`${who}: ${duration.source}. 개인별 인정시간을 확인·적용해주세요.`);continue;}
   if(duration.hours===0&&duration.minutes===0){excluded.push(person);continue;}
+  const dates=personDates(person,notice);if(!dates.valid){issues.push(`${who}: ${dates.source}. 교육시작일·종료일을 확인해주세요.`);continue;}
   if(person.status!=='대상 부서 일치'){issues.push(`${who}: ${person.status}. 명단을 확인해주세요.`);continue;}
   included.push(person);
  }

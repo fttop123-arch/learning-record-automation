@@ -140,7 +140,7 @@ test('학습유형·날짜만 있는 공문·장소 미기재 허용',()=>{
  assert.throws(()=>parseNotice(text+'\n7. 교육유형 : 다른 유형'),/하나로 확인/);
 });
 
-function withoutEvidence(n){const {candidates,source_text,...value}=n;return value;}
+function withoutEvidence(n){const {candidates,source_text,start_date,end_date,...value}=n;return value;}
 const {extractCandidates,validReview}=await import('../dist/notice-review.js');
 test('후보 추출: 참석일시·누락 항목·모호한 날짜·시행일 제외',()=>{
  const n=extractCandidates('시행일: 2026. 9. 1.\n참석일시: 2026. 9. 22.\n인정시간: 2시간\n학습유형: 공식 유형');assert.equal(n.date,'2026-09-22');assert.equal(n.hours,2);assert.equal(n.name,null);assert.equal(n.candidates.date[0].evidence,'참석일시: 2026. 9. 22.');
@@ -278,10 +278,10 @@ test('학습방법: 네 가지와 공백 별칭·미지원 값',()=>{
 });
 test('등록계획: 0시간 제외와 빈칸·수정대기·동명이인 사유 구분',()=>{
  const people=[{name:'가상A',row:2,status:'대상 부서 일치',duration_input:{raw:'0',unit:''}},{name:'가상B',row:3,status:'대상 부서 일치',duration_input:{raw:'1시간',unit:''}},{name:'가상C',row:4,status:'대상 부서 일치',duration_input:{raw:'',unit:''}}];
- let plan=registrationPlan(people,{});assert.equal(plan.excluded.length,1);assert.equal(plan.included.length,1);assert.match(plan.issues[0],/가상C.*4행.*빈칸/);
+ let plan=registrationPlan(people,{date:'2026-09-21'});assert.equal(plan.excluded.length,1);assert.equal(plan.included.length,1);assert.match(plan.issues[0],/가상C.*4행.*빈칸/);
  plan=registrationPlan(people.slice(0,1),{});assert.match(plan.issues[0],/모든 대상자.*0시간/);
- people[1].duration_pending=true;assert.match(registrationPlan(people.slice(1,2),{}).issues[0],/수정한 시간 적용/);
- delete people[1].duration_pending;people[1].status='동명이인 확인 필요';assert.match(registrationPlan(people.slice(1,2),{}).issues[0],/가상B.*동명이인/);
+ people[1].duration_pending=true;assert.match(registrationPlan(people.slice(1,2),{date:'2026-09-21'}).issues[0],/수정한 시간 적용/);
+ delete people[1].duration_pending;people[1].status='동명이인 확인 필요';assert.match(registrationPlan(people.slice(1,2),{date:'2026-09-21'}).issues[0],/가상B.*동명이인/);
  assert.equal(parseDuration('0'),null);assert.deepEqual(parseDuration('0','',true),{hours:0,minutes:0});
 });
 test('Excel: 네 가지 J열 코드·0시간 제외 후 연속 행/수식·전체 0 차단',async()=>{
@@ -298,9 +298,9 @@ test('검토 화면: 개인시간이면 공통입력 숨김·네 방법 선택·
  const {createReview}=await import('../dist/notice-review.js'),old=globalThis.document;
  class Element{constructor(tag){this.tagName=tag;this.children=[];this.events={};this.value='';this.classList={add(){},toggle(){}};}append(...nodes){this.children.push(...nodes);}prepend(...nodes){this.children.unshift(...nodes);}setAttribute(){}addEventListener(name,fn){this.events[name]=fn;}scrollIntoView(){}focus(){}}
  const nodes=[];globalThis.document={createElement(tag){const e=new Element(tag);nodes.push(e);return e;}};
- try{let confirmed;const notice={...demoData().notice,hours:null,minutes:null};createReview(notice,types,types[0],v=>confirmed=v,{individualTimes:true});
+ try{let confirmed;const notice={...demoData().notice,hours:null,minutes:null};createReview({...notice,date:null},types,types[0],v=>confirmed=v,{individualTimes:true,individualDates:true});
  const hours=nodes.find(n=>n.name==='hours'),minutes=nodes.find(n=>n.name==='minutes'),method=nodes.find(n=>n.name==='method');
- assert.equal(hours.disabled,true);assert.equal(minutes.disabled,true);assert.ok(nodes.some(n=>n.children.includes(hours)&&n.hidden));assert.equal(method.children.length,5);
+ assert.equal(nodes.find(n=>n.name==='start_date').disabled,true);assert.equal(nodes.find(n=>n.name==='end_date').disabled,true);assert.equal(hours.disabled,true);assert.equal(minutes.disabled,true);assert.ok(nodes.some(n=>n.children.includes(hours)&&n.hidden));assert.equal(method.children.length,5);
  method.value='사이버과정';nodes.find(n=>n.id==='confirm-education').events.click();assert.equal(confirmed.notice.hours,null);assert.equal(confirmed.notice.minutes,null);assert.equal(confirmed.notice.method,'사이버과정');
  }finally{globalThis.document=old;}
 });
@@ -314,4 +314,35 @@ test('단위 없는 명단 숫자: 시간 기본값·분 예외·소수시간 H/
  }
  const sheets=[{name:'S',rows:[['부서','名前','성명','이 수 시 간 ( 분 )'],['디지털정책과','','가상A',90]]}];const d=personDuration(filterAttendees(sheets,'디지털정책과').attendees[0],{});assert.deepEqual([d.hours,d.minutes],[1,30]);
  assert.deepEqual(parseDuration('30분','hours'),{hours:0,minutes:30});assert.equal(parseDuration('-2','hours'),null);assert.equal(parseDuration('잘못된 값','hours'),null);
+});
+
+const {readDate,readPeriod,personDates,noticePeriod}=await import('../dist/dates.js');
+test('날짜: 공문 기간·시작/종료 별칭·하루·연도 생략',()=>{
+ for(const text of ['교육기간: 2026. 9. 21. ~ 9. 23.','학 습 기 간: 2026-09-21 ~ 2026-09-23','교육시작일: 2026.9.21.\n학습 종료: 2026.9.23.']){
+ const n=extractCandidates(text);assert.equal(n.start_date,'2026-09-21');assert.equal(n.end_date,'2026-09-23');
+ }
+ const one=extractCandidates('교육일: 2026.9.21.');assert.equal(one.start_date,one.end_date);assert.equal(one.start_date,'2026-09-21');
+ assert.deepEqual(readPeriod('2026. 9. 21. ~ 23.'),{start:'2026-09-21',end:'2026-09-23'});
+ assert.equal(readPeriod('2026.9.23. ~ 21.'),null);assert.equal(readDate('2026.2.30.'),null);
+ assert.equal(readDate(46286),'2026-09-21');assert.equal(readDate(46286-1462,true),'2026-09-21');
+ const conflict=noticePeriod('교육기간: 2026.9.21. ~ 9.23.\n학습시작일: 2026.9.22.');assert.equal(conflict.start,null);
+});
+test('날짜: 명단 우선·없는 경우만 공문·빈칸/충돌/중복/역전 차단',()=>{
+ const n={date:'2026-09-21',start_date:'2026-09-21',end_date:'2026-09-23'};
+ const sheets=[{name:'S',rows:[['부서','이름','학 습 시 작','교육종료일'],['디지털정책과','가상A','2026.9.22.','2026.9.23.'],['디지털정책과','가상B','2026.9.22.','']]}];
+ const people=filterAttendees(sheets,'디지털정책과').attendees;assert.equal(personDates(people[0],n).start,'2026-09-22');assert.equal(personDates(people[1],n).valid,false);
+ assert.equal(personDates({},n).end,'2026-09-23');
+ const p=fields=>({date_input:{fields}});
+ assert.equal(personDates(p([{kind:'start',label:'교육시작일',raw:'2026-09-22'}]),n).end,'2026-09-22');
+ assert.equal(personDates(p([{kind:'start',raw:'2026-09-24'},{kind:'end',raw:'2026-09-23'}]),n).valid,false);
+ assert.equal(personDates(p([{kind:'single',raw:'2026-09-22'},{kind:'period',raw:'2026.9.21.~9.23.'}]),n).valid,false);
+ assert.equal(personDates(p([{kind:'start',raw:'2026-09-22'},{kind:'start',raw:'2026-09-22'}]),n).valid,false);
+ assert.equal(personDates({date_pending:true},n).valid,false);
+});
+test('Excel 날짜: 공문기간·개인별 F/G·하루·날짜 오류 차단',async()=>{
+ const a=analysis();a.notice.start_date='2026-09-21';a.notice.end_date='2026-09-23';a.roster.attendees[0].date_input={fields:[{kind:'start',label:'학습시작일',raw:46287},{kind:'end',label:'학습종료일',raw:46288}]};
+ const choices={required:'N',welfare:'N',participation:'1'},book=await readWorkbook(await generateExcel(template,a,choices)),rows=book.sheets.find(s=>s.name==='Sheet1').rows;
+ assert.deepEqual(rows.slice(1).map(r=>r.slice(5,7)),[[46287,46288],[46286,46288]]);assert.deepEqual(rows[1].slice(7,9),[2,0]);
+ a.roster.attendees[0].date_input.fields[1].raw='';await assert.rejects(()=>generateExcel(template,a,choices),/김지현.*날짜 빈칸/);
+ a.roster.attendees[0].date_override={start:'2026-09-21',end:'2026-09-21'};const b=await readWorkbook(await generateExcel(template,a,choices));assert.deepEqual(b.sheets.find(s=>s.name==='Sheet1').rows[1].slice(5,7),[46286,46286]);
 });
