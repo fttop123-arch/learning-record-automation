@@ -1,5 +1,13 @@
 import {parseNotice,spaces} from './core.js';
-export function extractCandidates(text){
+// 제목은 확정값이 아니라 사용자가 검토할 후보로만 제안한다.
+export function titleEducationName(title){
+ let value=String(title||'').replace(/\.(pdf|odt|hwpx)$/i,'').replace(/^\s*[（(]샘플[)）]\s*/,'').replace(/_/g,' ').replace(/\s+/g,' ').trim();
+ value=value.replace(/\s*(?:참석자|참여자|이수자)?\s*(?:상시학습|교육실적|교육 실적|학습실적)\s*(?:실적\s*)?인정\s*(?:알림|안내|통보|요청)?\s*$/,'').replace(/\s*(?:참석자|참여자|이수자)\s*$/,'').trim();
+ const specific=value.replace(/\d{4}\s*년?|[\s\d.()「」『』“”"'·ㆍ-]/g,'');
+ if(!/(교육|포럼|연수|강좌|워크숍|세미나|특강|설명회|학습|회의|훈련)/.test(value)||specific.length<3||/^(?:상시학습|교육실적|교육|학습)(?:실적)?(?:인정)?(?:안내|알림|통보|요청)?$/.test(specific))return null;
+ return value;
+}
+export function extractCandidates(text,{filename=''}={}){
  const candidates={name:[],date:[],hours:[],method:[],type_raw:[]};
  const add=(key,value,line)=>{if(!candidates[key].some(c=>c.value===value))candidates[key].push({value,evidence:line});};
  for(const line of text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)){
@@ -17,6 +25,12 @@ export function extractCandidates(text){
    const m=value?.match(/^(?:(\d+)\s*시간)?\s*(?:(\d+)\s*분)?\s*$/);
    if(m&&(m[1]||m[2])&&Number(m[2]||0)<60)add('hours',Number(m[1]||0)*60+Number(m[2]||0),line);
   }
+ }
+ if(!candidates.name.length){
+  const titles=[...text.matchAll(/(?:^|\n)\s*제\s*목\s*[:：]\s*([^\n]+)/g)];
+  for(const title of titles){const name=titleEducationName(title[1]);if(name)candidates.name.push({value:name,evidence:title[0].trim(),source:'document_title',inferred:true});}
+  // 제목이 여러 개거나 구체적이지 않으면 파일명으로 임의 덮어쓰지 않는다.
+  if(!titles.length){const name=titleEducationName(filename);if(name)candidates.name.push({value:name,evidence:filename,source:'filename',inferred:true});}
  }
  let base={name:null,date:null,start:null,end:null,place:null,method:null,type_raw:null,hours:null,minutes:null};
  try{base=parseNotice(text);}catch{/* 불확실한 항목은 편집 화면에서 확인한다. */}
@@ -46,7 +60,7 @@ export function createReview(notice,names,selected,onConfirm){
    function updateTypeHint(){const missing=!input.value;wrap.classList.toggle('type-missing',missing);input.setAttribute('aria-invalid',String(missing));badge.textContent=missing?'필수 선택':'선택 확인 필요';hint.textContent=missing?'교육유형을 반드시 선택해주세요. 공문 내용과 비교하여 공식 목록에서 선택한 뒤 확인·적용하세요.':'선택된 교육유형이 공문 내용에 맞는지 확인한 뒤 아래 ‘교육정보 확인·적용’을 눌러주세요.';}
    input.addEventListener('change',updateTypeHint);updateTypeHint();
   }
-  for(const c of notice.candidates?.[key==='official'?'type_raw':key]||[]){const p=document.createElement('p');p.className='candidate-evidence';p.textContent='근거: '+c.evidence;wrap.append(p);if(key==='date'||key==='name'){const choose=document.createElement('button');choose.type='button';choose.textContent='이 후보 사용: '+c.value;choose.addEventListener('click',()=>{input.value=c.value;markDirty();});wrap.append(choose);}}
+  for(const c of notice.candidates?.[key==='official'?'type_raw':key]||[]){const p=document.createElement('p');p.className='candidate-evidence';p.textContent=(c.inferred?(c.source==='filename'?'파일명에서 추정한 교육명입니다.':'문서 제목에서 추정한 교육명입니다.')+' 원문과 비교하여 확인·수정해주세요. 근거: ':'근거: ')+c.evidence;wrap.append(p);if(key==='date'||key==='name'){const choose=document.createElement('button');choose.type='button';choose.textContent='이 후보 사용: '+c.value;choose.addEventListener('click',()=>{input.value=c.value;markDirty();});wrap.append(choose);}}
   box.append(wrap);
  }
  const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='추출한 공문 원문 보기';pre.textContent=notice.source_text||'추출된 원문이 없습니다.';details.append(summary,pre);box.append(details);

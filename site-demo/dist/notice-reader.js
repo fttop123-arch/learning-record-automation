@@ -1,5 +1,5 @@
-import {extractCandidates as parseNotice} from './notice-review.js';
-import {extractPdf} from './pdf-reader.js';
+import {extractCandidates as parseNotice} from './notice-review.js?v=20261024-title';
+import {extractPdf} from './pdf-reader.js?v=20261024-title';
 import {withDeadline} from './async-utils.js';
 const TEXT='urn:oasis:names:tc:opendocument:xmlns:text:1.0';
 function textOf(node){
@@ -27,7 +27,7 @@ export async function extractOdt(file,{signal,progress=()=>{}}={}){
   const text=paragraphs.concat(headings).map(textOf).join('\n');
   if(!text.trim())throw Error('ODT에서 글자를 찾지 못했습니다. 이미지 문서의 OCR은 지원하지 않습니다.');
   if(signal?.aborted)throw Error('공문 분석이 취소되었습니다.');
-  progress('ODT 교육정보 분석');return parseNotice(text);
+  progress('ODT 교육정보 분석');return parseNotice(text,{filename:file.name});
  },{label:'공문 ODT 읽기',timeoutMs:25000,signal});
 }
 // 본문 구역만 읽는다. 미리보기 텍스트는 잘릴 수 있어 대체 자료로 사용하지 않는다.
@@ -65,7 +65,7 @@ export async function extractHwpx(file,{signal,progress=()=>{}}={}){
    text+=walk(doc)+'\n';
   }
   if(!text.trim())throw Error('HWPX에서 글자를 찾지 못했습니다. 이미지 문서의 OCR은 지원하지 않습니다.');
-  return parseNotice(text);
+  return parseNotice(text,{filename:file.name});
  },{label:'공문 HWPX 읽기',timeoutMs:25000,signal});
 }
 export function extractNotice(file,options={}){

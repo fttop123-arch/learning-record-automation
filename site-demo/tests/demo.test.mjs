@@ -212,3 +212,17 @@ test('간소화 명단: 중복 컬럼·다중 시트는 후보만 제시',()=>{
  for(const m of result.candidates)assert.doesNotThrow(()=>listDepartments([{name:'S',rows:[['부서','소속','성명']]}],m));
  assert.equal(mappingChoices([{name:'A',rows:[['부서','이름']]},{name:'B',rows:[['소속','성명']]}]).candidates.length,2);
 });
+
+test('교육명 보완: 본문 우선·문서 제목 추정·파일명 추정',()=>{
+ const title='2026 경주 AI·AX대전환 시민포럼 참석자 상시학습 인정 알림';
+ assert.equal(extractCandidates('제목: 소방교육').name,'소방교육');
+ const a=extractCandidates('제 목 : '+title);assert.equal(a.name,'2026 경주 AI·AX대전환 시민포럼');assert.equal(a.candidates.name[0].source,'document_title');assert.equal(a.candidates.name[0].inferred,true);
+ const b=extractCandidates('교육명: 명시된 소방교육\n제목: '+title,{filename:'다른포럼.pdf'});assert.equal(b.name,'명시된 소방교육');assert.equal(b.candidates.name.length,1);
+ const c=extractCandidates('참석일시: 2026. 9. 21.',{filename:'(샘플)2026년_경주시청_소방교육_상시학습_인정_알림.hwpx'});assert.equal(c.name,'2026년 경주시청 소방교육');assert.equal(c.candidates.name[0].source,'filename');
+});
+test('교육명 보완: 일반 제목·모호한 제목·다중 본문은 임의 확정 금지',()=>{
+ for(const title of ['교육실적 인정 안내','교육실적 인정 알림','교육 안내','상시학습 인정 알림','문서'])assert.equal(extractCandidates('제목: '+title).name,null);
+ assert.equal(extractCandidates('제목: 교육실적 인정 안내',{filename:'소방교육.pdf'}).name,null);
+ assert.equal(extractCandidates('제목: 경주시 소방교육 안내\n제목: 경주시 안전교육 안내').name,null);
+ assert.equal(extractCandidates('교육명: 소방교육\n교육명: 안전교육',{filename:'경주시 소방교육.pdf'}).name,null);
+});

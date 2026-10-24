@@ -1,6 +1,6 @@
 // PDF.js fingerprint 계산에서 사용하는 최신 API의 구형 브라우저 대체 구현.
 export const PDF_WORKER_COMPAT = `if(typeof Uint8Array.prototype.toHex!=='function'){Object.defineProperty(Uint8Array.prototype,'toHex',{configurable:true,writable:true,value:function(){let hex='';for(let i=0;i<this.length;i++)hex+=this[i].toString(16).padStart(2,'0');return hex;}});}`;
-import {extractCandidates as parseNotice} from './notice-review.js';
+import {extractCandidates as parseNotice} from './notice-review.js?v=20261024-title';
 import {withDeadline} from './async-utils.js';
 
 export async function extractPdf(file,{signal,progress=()=>{}}={}){
@@ -37,7 +37,7 @@ export async function extractPdf(file,{signal,progress=()=>{}}={}){
     for(const item of content.items){if(!('str'in item))continue;const y=item.transform[5];if(previousY!==null&&Math.abs(previousY-y)>3)text+='\n';text+=item.str+' ';if(item.hasEOL)text+='\n';previousY=y;}text+='\n';
    }
    if(!text.trim())throw Error('텍스트를 읽을 수 없습니다. 스캔 PDF의 OCR은 지원하지 않습니다.');
-   return parseNotice(text);
+   return parseNotice(text,{filename:file.name});
   },{label:'공문 PDF 읽기',timeoutMs:25000,signal,onStop:stop});
  }finally{
   signal?.removeEventListener('abort',abort);
