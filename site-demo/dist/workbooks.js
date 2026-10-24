@@ -1,3 +1,4 @@
+import {personDuration} from './durations.js?v=20261024-duration';
 /* XLSX 원본 ZIP의 필요한 셀만 변경. 외부 서버 요청이나 파일 저장 API 없음. */
 const MAIN='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const els=(node,name)=>Array.from(node.getElementsByTagNameNS(MAIN,name));
@@ -53,8 +54,9 @@ export async function generateExcel(template,analysis,choices){
  const sampleTag=source.match(/<row\b[^>]*\br="2"[^>]*>/)?.[0];if(!header||!sampleTag)throw Error('기준 양식 행 구조 확인 필요');
  const n=analysis.notice,serial=Date.parse(n.date+'T00:00:00Z')/86400000+25569;
  const rows=analysis.roster.attendees.map((a,i)=>{
+  const duration=personDuration(a,n);if(!duration.valid)throw Error(a.name+': 개인별 인정시간을 확인해주세요.');
   const r=i+2;const id=a.employee_lookup.status==='matched'?a.employee_lookup.employee_id:null;
-  const values=[a.name,id,analysis.reference.official,null,choices.required,serial,serial,n.hours,n.minutes,1,Number(choices.participation),n.name,n.name,'N',null,null];
+  const values=[a.name,id,analysis.reference.official,null,choices.required,serial,serial,duration.hours,duration.minutes,1,Number(choices.participation),n.name,n.name,'N',null,null];
   const cells=[...'ABCDEFGHIJKLMNOP'].map((col,ci)=>{
    const address=col+r,style=styles[col]===null||styles[col]===undefined?'':` s="${styles[col]}"`,base=`<c r="${address}"${style}`;
    if(col==='D')return `${base}><f>${escape(oldFormula.replace('MATCH(C2,',`MATCH(C${r},`))}</f></c>`;
@@ -73,6 +75,7 @@ export async function generateExcel(template,analysis,choices){
  if(sheet.rows.length!==analysis.roster.attendees.length+1)throw Error('결과 행 수 검증 실패');
  analysis.roster.attendees.forEach((a,i)=>{
   const row=sheet.rows[i+1],expected=a.employee_lookup.status==='matched'?a.employee_lookup.employee_id:null;
+  const duration=personDuration(a,analysis.notice);if(row[7]!==duration.hours||row[8]!==duration.minutes)throw Error('개인별 시간 검증 실패');
   if(row[0]!==a.name||row[1]!==expected||row[14]!==null||row[15]!==null)throw Error('결과 셀 검증 실패');
   const cell=els(sheet.doc,'c').find(c=>c.getAttribute('r')===`D${i+2}`);
   if(textOf(cell,'f')!==oldFormula.replace('MATCH(C2,',`MATCH(C${i+2},`))throw Error('행별 수식 검증 실패');

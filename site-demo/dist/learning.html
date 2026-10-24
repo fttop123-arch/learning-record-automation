@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko">
-<head><link rel="stylesheet" href="./demo-access.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>서무_상시학습 등록 자동화</title><link rel="stylesheet" href="./style.css"><script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261024-title"></script><link rel="stylesheet" href="./gyeongju-theme.css"></head>
+<head><link rel="stylesheet" href="./demo-access.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>서무_상시학습 등록 자동화</title><link rel="stylesheet" href="./style.css"><script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261024-duration"></script><link rel="stylesheet" href="./gyeongju-theme.css"></head>
 <body class="learning-page">
 <header><div class="brand"><img class="learning-logo" src="./assets/gyeongju-ci.png" alt="경주시" width="42" height="44"><span>서무업무 지원<span class="brand-sub">상시학습 교육실적</span></span></div><a class="home-link" href="./index.html">← 업무도우미 홈</a><button type="button" class="learning-help" id="learning-help-button">ⓘ 상시학습 도움말</button><span class="local">공개 시연판</span></header>
 <main>
@@ -18,7 +18,7 @@
   </form>
   <div id="analysis" hidden>
     <section class="card"><div class="section-title"><div><span class="step">02</span><h2>교육정보 및 대상자 분석</h2></div><span class="badge">분석 완료</span></div><dl id="education" class="education"></dl><details><summary>공문 원문 및 자동 입력값 확인</summary><dl id="source-info" class="education detail-grid"></dl></details>
-    <div class="table-title"><h3>등록 대상자 <span id="attendee-count"></span></h3><span class="muted">개인식별번호는 정상 매칭된 경우만 입력됩니다.</span></div><div class="table-wrap"><table><thead><tr><th>성명</th><th>직급</th><th>소속</th><th>개인식별번호</th><th>매칭 상태</th></tr></thead><tbody id="attendees"></tbody></table></div></section>
+    <div class="table-title"><h3>등록 대상자 <span id="attendee-count"></span></h3><span class="muted">개인식별번호는 정상 매칭된 경우만 입력됩니다.</span></div><div class="table-wrap"><table><thead><tr><th>성명</th><th>직급</th><th>소속</th><th>개인식별번호</th><th>인정시간 / 출처</th><th>매칭 상태</th></tr></thead><tbody id="attendees"></tbody></table></div></section>
     <section class="card"><div class="section-title"><div><span class="step">03</span><h2>사용자 확인</h2></div><span class="muted">교육 내용을 확인한 후 선택해주세요.</span></div><form id="generate-form"><div class="choice-grid">
       <label>필수교육<select name="required"><option value="N">N — 필수교육 해당 없음</option><option value="Y">Y — 필수교육 해당</option></select></label>
       <label>사회복지교육<select name="welfare" id="welfare"><option value="N">N — 사회복지교육 해당 없음</option><option value="Y">Y — 사회복지교육 해당</option></select></label>

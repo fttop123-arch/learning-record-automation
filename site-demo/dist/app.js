@@ -1,13 +1,14 @@
-import {createColumnMapping} from './column-mapping.js?v=20261024-compact';
+import {personDuration,parseDuration} from './durations.js?v=20261024-duration';
+import {createColumnMapping} from './column-mapping.js?v=20261024-duration';
 import {workflowStep,paintProgress} from './progress.js';
 import {requireDemoAccess} from './demo-access.js';
 await requireDemoAccess();
-import {createReview} from './notice-review.js?v=20261024-title';
+import {createReview} from './notice-review.js?v=20261024-duration';
 import {attachFileDrop,preventFileNavigation} from './file-drop.js';
 import {fileError,uploadIssues} from './file-validation.js';
-import {filterAttendees,employeeDirectory,lookupEmployee,matchType,spaces,listDepartments,searchDepartments,requireDepartmentChoice,initialDepartment} from './core.js?v=20261024-compact';
-import {readWorkbook,loadReference,generateExcel} from './workbooks.js';
-import {extractNotice} from './notice-reader.js?v=20261024-title';
+import {filterAttendees,employeeDirectory,lookupEmployee,matchType,spaces,listDepartments,searchDepartments,requireDepartmentChoice,initialDepartment} from './core.js?v=20261024-duration';
+import {readWorkbook,loadReference,generateExcel} from './workbooks.js?v=20261024-duration';
+import {extractNotice} from './notice-reader.js?v=20261024-duration';
 import {withDeadline} from './async-utils.js';
 const $=s=>document.querySelector(s);
 if(['127.0.0.1','localhost'].includes(location.hostname))$('header .local').textContent='로컬 테스트';
@@ -50,7 +51,7 @@ function alerts(messages=[]){$('#alert-list').replaceChildren(...messages.map(m=
 function fields(selector,entries){$(selector).replaceChildren(...entries.map(([label,value,wide])=>{const div=document.createElement('div');if(wide)div.className='wide';const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value??'확인 필요';div.append(dt,dd);return div;}));}
 function clearResult(){if(blobUrl)URL.revokeObjectURL(blobUrl);blobUrl=null;$('#download').removeAttribute('href');$('#completion').hidden=true;}
 const readyHint=document.createElement('p');readyHint.className='analysis-ready-hint';readyHint.setAttribute('role','status');$('#analyze-button').after(readyHint);
-function sync(){paintProgress([...document.querySelectorAll('.steps span')],workflowStep({hasAnalysis:!!analysis,reviewConfirmed:!!analysis?.review_confirmed,hasResult:!!blobUrl,busy}));for(const form of ['#upload-form','#generate-form'])for(const c of $(form).elements)c.disabled=busy;$('#department-search').disabled=busy||rosterLoading||!departments.length;$('#department-select').disabled=busy||rosterLoading||!departments.length;$('#analyze-button').disabled=busy||rosterLoading;$('#reset-button').disabled=false;$('#reset-button').textContent=busy||rosterLoading?'분석 취소·초기화':'입력·결과 초기화';$('#generate-button').disabled=busy;$('#welfare-warning').hidden=$('#welfare').value!=='Y';
+function sync(){for(const c of document.querySelectorAll('[data-duration-control]'))c.disabled=busy||c.dataset.ambiguous==='true';paintProgress([...document.querySelectorAll('.steps span')],workflowStep({hasAnalysis:!!analysis,reviewConfirmed:!!analysis?.review_confirmed,hasResult:!!blobUrl,busy}));for(const form of ['#upload-form','#generate-form'])for(const c of $(form).elements)c.disabled=busy;$('#department-search').disabled=busy||rosterLoading||!departments.length;$('#department-select').disabled=busy||rosterLoading||!departments.length;$('#analyze-button').disabled=busy||rosterLoading;$('#reset-button').disabled=false;$('#reset-button').textContent=busy||rosterLoading?'분석 취소·초기화':'입력·결과 초기화';$('#generate-button').disabled=busy;$('#welfare-warning').hidden=$('#welfare').value!=='Y';
  const notice=document.querySelector('input[name="notice"]').files[0];
  const reason=busy?'파일을 처리하고 있습니다.':rosterLoading?'참석자 명단에서 부서를 읽고 있습니다.':!attendeeBook?'참석자 명단 Excel을 선택해주세요. 명단에는 소속(부서)·성명(이름) 컬럼이 필요합니다. 직급은 선택입니다.':!$('#department-select').value?'대상 부서를 목록에서 선택해주세요.':!notice?'교육실적 인정 공문을 선택해주세요.':[...document.querySelectorAll('input[type=file]')].some(input=>!!fileError(input.name,input.files[0]))?'첨부파일의 오류 안내를 확인하고 다시 선택해주세요.':'분석할 준비가 되었습니다.';
  readyHint.textContent=reason;
@@ -71,11 +72,10 @@ function finish(notice,roster,directory,reference){
   if(!analysis)return;
   clearResult();
   analysis.review_confirmed=!!result;
-  analysis.can_generate=!!result&&can_generateRoster();
   if(result){analysis.notice=result.notice;analysis.reference={official:result.official,matches:[result.official]};analysis.method_code=1;analysis.warnings=warnings.filter(w=>!w.startsWith('교육유형')&&!w.startsWith('지원하는 학습방법'));render();}
-  sync();
- });
- function can_generateRoster(){return !!roster.attendees.length&&roster.attendees.every(a=>a.status==='대상 부서 일치');}
+  analysis.can_generate=!!result&&can_generateRoster();sync();
+ },{individualTimes:roster.attendees.length>0&&roster.attendees.every(a=>!!a.duration_input)});
+ function can_generateRoster(){return !!roster.attendees.length&&roster.attendees.every(a=>a.status==='대상 부서 일치'&&personDuration(a,analysis.notice).valid);}
  $('#analysis').prepend(editor);
  $('#generate-form').reset();render();
 }
@@ -85,8 +85,10 @@ function render(){
  fields('#education',[['교육명',n.name,true],['교육일',n.date],['시간',n.start&&n.end?`${n.start} ~ ${n.end}`:'공문에 미기재 (등록에는 사용하지 않음)'],['교육장소',n.place||'공문에 미기재'],['학습방법',`${n.method} / 코드 ${a.method_code??'미확정'}`],['교육유형 공식명',a.reference.official,true],['인정시간',n.hours===null?'확인 필요':`${n.hours}시간 ${n.minutes}분`]]);
  fields('#source-info',[['교육유형 원문',n.type_raw,true],['공식 목록 일치',`${a.reference.matches.length}개`],['교육시작일',n.date],['교육종료일',n.date],['제목',n.name],['내용',n.name,true]]);
  $('#attendee-count').textContent=a.roster.attendees.length+'명';
- $('#attendees').replaceChildren(...a.roster.attendees.map(person=>{const tr=document.createElement('tr');for(const value of [person.name||'(성명 없음)',person.rank||'미제공',person.department,person.employee_lookup.employee_id||'미입력']){const td=document.createElement('td');td.textContent=value;tr.append(td);}const td=document.createElement('td'),span=document.createElement('span'),small=document.createElement('small');span.className='status'+(person.employee_lookup.status==='matched'?'':' review');span.textContent=statusLabels[person.employee_lookup.status];small.textContent=person.employee_lookup.reason;td.append(span,small);tr.append(td);return tr;}));
- alerts(a.warnings);$('#analysis').hidden=false;$('#live-status').textContent=`분석이 완료되었습니다. 대상자 ${a.roster.attendees.length}명. `+(a.roster.attendees.length?'확인값을 검토해주세요.':'정확한 부서명을 확인한 후 다시 분석해주세요.');
+ $('#attendees').replaceChildren(...a.roster.attendees.map(person=>{const tr=document.createElement('tr');for(const value of [person.name||'(성명 없음)',person.rank||'미제공',person.department,person.employee_lookup.employee_id||'미입력']){const td=document.createElement('td');td.textContent=value;tr.append(td);}const duration=personDuration(person,n),timeCell=document.createElement('td'),timeText=document.createElement('div');timeText.textContent=(duration.valid?`${duration.hours}시간 ${duration.minutes}분`:'확인 필요')+' · '+duration.source;timeCell.append(timeText);
+ if(person.duration_input){const input=document.createElement('input');input.type='text';input.placeholder='예: 2시간 30분';input.setAttribute('aria-label',person.name+' 인정시간 수정');input.value=person.duration_override?`${person.duration_override.hours}시간 ${person.duration_override.minutes}분`:String(person.duration_input.raw??'');input.dataset.durationControl='true';input.dataset.ambiguous=String(!!person.duration_input.ambiguous);input.disabled=!!person.duration_input.ambiguous;input.addEventListener('input',()=>{person.duration_pending=true;analysis.review_confirmed=false;analysis.can_generate=false;clearResult();$('#review-confirm-message').textContent='개인별 시간 적용 후 교육정보 확인·적용을 다시 눌러주세요.';sync();});const button=document.createElement('button');button.type='button';button.textContent='시간 적용';button.dataset.durationControl='true';button.dataset.ambiguous=input.dataset.ambiguous;button.disabled=input.disabled;button.addEventListener('click',()=>{const value=parseDuration(input.value);if(!value){timeText.textContent='양수 시간을 단위와 함께 입력해주세요. 예: 2시간 30분';return;}person.duration_override=value;person.duration_pending=false;analysis.review_confirmed=false;analysis.can_generate=false;clearResult();render();$('#review-confirm-message').textContent='개인별 시간을 수정했습니다. 교육정보 확인·적용을 다시 눌러주세요.';sync();});timeCell.append(input,button);}tr.append(timeCell);
+ const td=document.createElement('td'),span=document.createElement('span'),small=document.createElement('small');span.className='status'+(person.employee_lookup.status==='matched'?'':' review');span.textContent=statusLabels[person.employee_lookup.status];small.textContent=person.employee_lookup.reason;td.append(span,small);tr.append(td);return tr;}));
+ alerts([...a.warnings,...a.roster.attendees.filter(p=>!personDuration(p,n).valid).map(p=>p.name+': 인정시간 확인 필요')]);$('#analysis').hidden=false;$('#live-status').textContent=`분석이 완료되었습니다. 대상자 ${a.roster.attendees.length}명. `+(a.roster.attendees.length?'확인값을 검토해주세요.':'정확한 부서명을 확인한 후 다시 분석해주세요.');
  if(!a.roster.attendees.length)$('#alerts').scrollIntoView({behavior:'smooth',block:'center'});
 
 }

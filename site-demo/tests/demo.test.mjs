@@ -226,3 +226,31 @@ test('교육명 보완: 일반 제목·모호한 제목·다중 본문은 임의
  assert.equal(extractCandidates('제목: 경주시 소방교육 안내\n제목: 경주시 안전교육 안내').name,null);
  assert.equal(extractCandidates('교육명: 소방교육\n교육명: 안전교육',{filename:'경주시 소방교육.pdf'}).name,null);
 });
+
+const {parseDuration,personDuration,rosterDurationColumns}=await import('../dist/durations.js');
+test('개인시간: 단위·분·소수시간 검증',()=>{
+ assert.deepEqual(parseDuration('2시간 30분'),{hours:2,minutes:30});assert.deepEqual(parseDuration(2.5,'hours'),{hours:2,minutes:30});assert.deepEqual(parseDuration(150,'minutes'),{hours:2,minutes:30});
+ for(const v of ['',3,'-1시간','2시간 60분','0시간','2시간 3분 기타'])assert.equal(parseDuration(v),null);
+});
+test('개인시간: 인정시간 우선·교육시간 대체·빈칸은 공통값 대입 금지',()=>{
+ const sheets=[{name:'S',rows:[['부서','성명','교육시간(시간)','인정시간'],['디지털정책과','가상A',5,'2시간 30분'],['디지털정책과','가상B',4,'']]}];
+ const people=filterAttendees(sheets,'디지털정책과').attendees;
+ assert.equal(personDuration(people[0],{hours:3,minutes:0}).hours,2);assert.equal(personDuration(people[1],{hours:3,minutes:0}).valid,false);
+ assert.deepEqual(rosterDurationColumns(['교육 시간 (시간)']),[{index:0,label:'교육시간(시간)',unit:'hours'}]);
+ assert.equal(personDuration({}, {hours:3,minutes:0}).source,'공문 공통값');
+ assert.equal(personDuration({duration_input:{raw:'3',unit:''}},{hours:2,minutes:0}).valid,false);
+ assert.equal(personDuration({duration_input:{ambiguous:true,raw:'2시간'}},{hours:2,minutes:0}).valid,false);
+ people[1].duration_override={hours:1,minutes:30};assert.equal(personDuration(people[1],{}).valid,true);people[1].duration_pending=true;assert.equal(personDuration(people[1],{}).valid,false);
+});
+test('공문 시간: 차수별 시간 후보·복수 시간 불확정·근거 유지',()=>{
+ const n=extractCandidates('차수별3시간 인정');assert.equal(n.hours,3);assert.equal(n.minutes,0);assert.match(n.candidates.hours[0].evidence,/차수당/);
+ assert.equal(extractCandidates('차수별 3시간 인정\n인정시간: 2시간').hours,null);
+ assert.equal(extractCandidates('차수별 0시간 인정').hours,null);
+});
+test('개인시간 Excel: H/I 개별 출력·빈값 차단·수정 후 출력',async()=>{
+ const a=analysis();a.roster.attendees[0].duration_input={label:'인정시간',raw:'2시간 30분',unit:''};a.roster.attendees[1].duration_input={label:'교육시간(시간)',raw:1.5,unit:'hours'};
+ const choices={required:'N',welfare:'N',participation:'0'};
+ let b=await readWorkbook(await generateExcel(template,a,choices));let rows=b.sheets.find(s=>s.name==='Sheet1').rows;assert.deepEqual(rows.slice(1).map(r=>r.slice(7,9)),[[2,30],[1,30]]);
+ a.roster.attendees[1].duration_input.raw='';await assert.rejects(()=>generateExcel(template,a,choices),/개인별 인정시간/);
+ a.roster.attendees[1].duration_override={hours:1,minutes:0};b=await readWorkbook(await generateExcel(template,a,choices));rows=b.sheets.find(s=>s.name==='Sheet1').rows;assert.deepEqual(rows[2].slice(7,9),[1,0]);assert.equal(rows[2][14],null);
+});
