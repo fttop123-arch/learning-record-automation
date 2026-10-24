@@ -87,6 +87,7 @@ def main():
     html = html.replace('accept=".pdf"', 'accept=".pdf,.odt,.hwpx"').replace('공문 PDF', '공문 PDF, ODT 또는 HWPX').replace('PDF <b>', 'PDF · ODT · HWPX <b>').replace('PDF·XLSX /', 'PDF·ODT·HWPX·XLSX /').replace('PDF 공문', 'PDF, ODT 또는 HWPX 공문')
     html = html.replace('소속·직급·성명이 포함된 명단', '소속(부서)·성명(이름) 필수 / 직급 선택')
     html = html.replace('<head>', '<head><link rel="stylesheet" href="./demo-access.css">')
+    html = html.replace('<body>', '<body class="learning-page">').replace('</head>', '<link rel="stylesheet" href="./gyeongju-theme.css"></head>')
     (DIST / 'learning.html').write_text(html,encoding='utf-8')
     shutil.copyfile(Path(__file__).resolve().parent / 'portal.html', DIST / 'index.html')
     with (DIST / 'style.css').open('a',encoding='utf-8') as style:

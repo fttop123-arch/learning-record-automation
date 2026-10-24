@@ -170,3 +170,13 @@ test('구형 브라우저 PDF Worker: toHex 부재 호환 및 기존 함수 유�
  assert.equal(runInNewContext("delete Uint8Array.prototype.toHex;"+PDF_WORKER_COMPAT+"new Uint8Array([0,15,16,255]).toHex()"),'000f10ff');
  assert.equal(runInNewContext("Uint8Array.prototype.toHex=function(){return 'native';};"+PDF_WORKER_COMPAT+"new Uint8Array().toHex()"),'native');
 });
+
+const {workflowStep}=await import('../dist/progress.js');
+test('진행 표시: 첨부→분석→확인→생성 및 재수정·초기화',()=>{
+ assert.equal(workflowStep(),0);assert.equal(workflowStep({busy:true}),1);
+ assert.equal(workflowStep({hasAnalysis:true}),1);
+ assert.equal(workflowStep({hasAnalysis:true,reviewConfirmed:true}),2);
+ assert.equal(workflowStep({hasAnalysis:true,reviewConfirmed:true,hasResult:true}),3);
+ assert.equal(workflowStep({hasAnalysis:true,reviewConfirmed:true,hasResult:false}),2);
+ assert.equal(workflowStep({hasAnalysis:true,reviewConfirmed:false}),1);assert.equal(workflowStep({hasAnalysis:false}),0);
+});

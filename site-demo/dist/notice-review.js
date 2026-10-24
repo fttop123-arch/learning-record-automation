@@ -39,6 +39,13 @@ export function createReview(notice,names,selected,onConfirm){
   if(type==='select')for(const [v,t]of [['','선택해주세요'],...(key==='official'?names.map(n=>[n,n]):[['집합교육','집합교육 → 집합과정(1)']])]){const o=document.createElement('option');o.value=v;o.textContent=t;input.append(o);}
   else{input.type=type;if(type==='number'){input.min=0;input.step=1;if(key==='minutes')input.max=59;}}
   input.value=key==='official'?(selected||''):(notice[key]??'');wrap.append(input);controls[key]=input;
+  if(key==='official'){
+   wrap.classList.add('official-type-field');input.required=true;input.setAttribute('aria-required','true');input.id='official-type-select';
+   const badge=document.createElement('span');badge.className='type-review-badge';wrap.prepend(badge);
+   const hint=document.createElement('p');hint.id='official-type-hint';hint.className='type-review-hint';hint.setAttribute('role','status');input.setAttribute('aria-describedby',hint.id);wrap.append(hint);
+   function updateTypeHint(){const missing=!input.value;wrap.classList.toggle('type-missing',missing);input.setAttribute('aria-invalid',String(missing));badge.textContent=missing?'필수 선택':'선택 확인 필요';hint.textContent=missing?'교육유형을 반드시 선택해주세요. 공문 내용과 비교하여 공식 목록에서 선택한 뒤 확인·적용하세요.':'선택된 교육유형이 공문 내용에 맞는지 확인한 뒤 아래 ‘교육정보 확인·적용’을 눌러주세요.';}
+   input.addEventListener('change',updateTypeHint);updateTypeHint();
+  }
   for(const c of notice.candidates?.[key==='official'?'type_raw':key]||[]){const p=document.createElement('p');p.className='candidate-evidence';p.textContent='근거: '+c.evidence;wrap.append(p);if(key==='date'||key==='name'){const choose=document.createElement('button');choose.type='button';choose.textContent='이 후보 사용: '+c.value;choose.addEventListener('click',()=>{input.value=c.value;markDirty();});wrap.append(choose);}}
   box.append(wrap);
  }
@@ -46,5 +53,5 @@ export function createReview(notice,names,selected,onConfirm){
  const status=document.createElement('p');status.setAttribute('role','status');status.id='review-confirm-message';const confirm=document.createElement('button');confirm.type='button';confirm.id='confirm-education';confirm.className='confirm-education';confirm.textContent='교육정보 확인·적용';
  function markDirty(){status.textContent='수정된 교육정보를 확인·적용해주세요.';onConfirm(null);}
  for(const input of Object.values(controls))input.addEventListener('input',markDirty);
- confirm.addEventListener('click',()=>{const n={...notice};for(const k of ['name','date','method'])n[k]=controls[k].value.trim();n.hours=controls.hours.value===''?null:Number(controls.hours.value);n.minutes=controls.minutes.value===''?null:Number(controls.minutes.value);const official=controls.official.value;if(!validReview(n)||!names.includes(official)||n.method!=='집합교육'){status.textContent='교육명·유효한 교육일·인정시간·학습방법·공식 교육유형을 모두 확인해주세요.';onConfirm(null);return;}status.textContent='교육정보 확인이 적용되었습니다.';onConfirm({notice:n,official});});const actions=document.createElement('div');actions.className='review-actions';actions.append(confirm,status);box.append(actions);return box;
+ confirm.addEventListener('click',()=>{const n={...notice};for(const k of ['name','date','method'])n[k]=controls[k].value.trim();n.hours=controls.hours.value===''?null:Number(controls.hours.value);n.minutes=controls.minutes.value===''?null:Number(controls.minutes.value);const official=controls.official.value;if(!names.includes(official)){status.textContent='교육유형 공식명을 먼저 선택해주세요.';controls.official.scrollIntoView({behavior:'smooth',block:'center'});controls.official.focus({preventScroll:true});onConfirm(null);return;}if(!validReview(n)||!names.includes(official)||n.method!=='집합교육'){status.textContent='교육명·유효한 교육일·인정시간·학습방법·공식 교육유형을 모두 확인해주세요.';onConfirm(null);return;}status.textContent='교육정보 확인이 적용되었습니다.';onConfirm({notice:n,official});});const actions=document.createElement('div');actions.className='review-actions';actions.append(confirm,status);box.append(actions);return box;
 }
