@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {demoData} from './sample-data.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -7,7 +8,7 @@ import {DOMParser} from '@xmldom/xmldom';
 import JSZip from 'jszip';
 import {gunzipSync} from 'node:zlib';
 import {withDeadline} from '../dist/async-utils.js';
-import {parseNotice,filterAttendees,employeeDirectory,lookupEmployee,matchType,demoData,listDepartments,searchDepartments,requireDepartmentChoice,initialDepartment} from '../dist/core.js';
+import {parseNotice,filterAttendees,employeeDirectory,lookupEmployee,matchType,listDepartments,searchDepartments,requireDepartmentChoice,initialDepartment} from '../dist/core.js';
 import {readWorkbook,generateExcel} from '../dist/workbooks.js';
 globalThis.DOMParser=DOMParser;globalThis.JSZip=JSZip;
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
@@ -36,7 +37,7 @@ test('XLSX 생성·행별 수식·O/P 빈셀·양식 보존',async()=>{
 });
 test('파일 미첨부 B열 빈셀',async()=>{const a=analysis();for(const person of a.roster.attendees)person.employee_lookup=lookupEmployee(employeeDirectory(null),person.department,person.name);const b=await readWorkbook(await generateExcel(template,a,{required:'Y',welfare:'N',participation:'1'}));assert.equal(b.sheets[0].rows[1][1],null);assert.equal(b.sheets[0].rows[1][4],'Y');assert.equal(b.sheets[0].rows[1][10],1);});
 test('사회복지교육 Y는 생성 차단',async()=>assert.rejects(()=>generateExcel(template,analysis(),{required:'N',welfare:'Y',participation:'0'})));
-test('공개 UI 안내와 브라우저 내부 처리',async()=>{const html=await fs.readFile(path.join(root,'site-demo/dist/learning.html'),'utf8'),app=await fs.readFile(path.join(root,'site-demo/dist/app.js'),'utf8');assert.ok(html.includes('실제 개인정보 및 내부자료를 업로드하지 마세요.'));assert.ok(html.includes('샘플 데이터로 체험'));assert.ok(!app.includes('POST'));assert.ok(!app.includes('localStorage'));});
+test('공개 UI 안내와 브라우저 내부 처리',async()=>{const html=await fs.readFile(path.join(root,'site-demo/dist/learning.html'),'utf8'),app=await fs.readFile(path.join(root,'site-demo/dist/app.js'),'utf8');assert.ok(html.includes('실제 개인정보 및 내부자료를 업로드하지 마세요.'));assert.ok(!html.includes('sample-button'));assert.ok(!app.includes('sample-button'));assert.ok(!app.includes('demoData'));assert.ok(html.includes('reset-button'));assert.ok(!app.includes('POST'));assert.ok(!app.includes('localStorage'));});
 test('노인복지는 자동 매칭 없이 노인복지과 안내',()=>{const sheets=[{name:'Sheet1',rows:[['소속','직급','성명'],['노인복지과','사회복지8급','가상직원1'],['노인복지과','사회복지6급','가상직원2']]}];const partial=filterAttendees(sheets,'노인복지');assert.equal(partial.attendees.length,0);assert.deepEqual(partial.suggestions,['노인복지과']);assert.equal(filterAttendees(sheets,'노인복지과').attendees.length,2);});
 test('끝나지 않는 분석도 제한시간 후 종료',async()=>{let stopped=false;await assert.rejects(withDeadline(new Promise(()=>{}),{label:'공문 PDF',timeoutMs:10,onStop:()=>{stopped=true;}}),/처리 시간이 초과/);assert.equal(stopped,true);});
 test('분석 중 취소가 즉시 끝남',async()=>{const c=new AbortController();const pending=withDeadline(new Promise(()=>{}),{signal:c.signal});c.abort();await assert.rejects(pending,/취소/);});
@@ -191,4 +192,23 @@ test('컬럼 연결: 다른 시트·머리글 행·알 수 없는 이름·원본
  const mapping={sheetIndex:1,headerRow:1,departmentColumn:0,nameColumn:1,rankColumn:2};
  assert.equal(autoMapping(sheets),null);assert.deepEqual(listDepartments(sheets,mapping),['디지털정책과','다른부서']);const r=filterAttendees(sheets,'디지털정책과',mapping);assert.equal(r.attendees.length,1);assert.equal(r.attendees[0].row,3);assert.equal(r.attendees[0].rank,'9급');
  assert.throws(()=>listDepartments(sheets,{...mapping,nameColumn:0}),/서로 다른/);assert.throws(()=>listDepartments(sheets,{...mapping,headerRow:99}),/머리글/);assert.throws(()=>listDepartments(sheets,{...mapping,rankColumn:1}),/직급/);
+});
+
+const {mappingChoices}=await import('../dist/column-mapping.js');
+test('간소화 명단: 공백 머리글 자동 인식',()=>{
+ for(const dept of ['부서','부서명','부 서','부 서 명','소속','소 속 부 서'])for(const name of ['성명','성 명','이름','이 름']){
+ const sheets=[{name:'명단',rows:[['제목'],[dept,name],['디지털정책과','가상직원']]}];
+ assert.equal(autoMapping(sheets).headerRow,1);assert.equal(filterAttendees(sheets,'디지털정책과').attendees.length,1);
+ }
+});
+test('간소화 명단: 누락·알 수 없는 머리글은 파일 교체 안내',()=>{
+ for(const rows of [[['부서','참여자']],[['조직','이름']],[['조직','참여자']]]){
+ const result=mappingChoices([{name:'S',rows}]);assert.equal(result.candidates.length,0);assert.match(result.message,/수정하거나 교체/);
+ }
+ const separate=mappingChoices([{name:'S',rows:[['부서'],['이름']]}]);assert.equal(separate.candidates.length,0);assert.match(separate.message,/같은 머리글 행/);
+});
+test('간소화 명단: 중복 컬럼·다중 시트는 후보만 제시',()=>{
+ const result=mappingChoices([{name:'S',rows:[['부서','소속','성명']]}]);assert.equal(result.candidates.length,2);assert.equal(autoMapping([{name:'S',rows:[['부서','소속','성명']]}]),null);
+ for(const m of result.candidates)assert.doesNotThrow(()=>listDepartments([{name:'S',rows:[['부서','소속','성명']]}],m));
+ assert.equal(mappingChoices([{name:'A',rows:[['부서','이름']]},{name:'B',rows:[['소속','성명']]}]).candidates.length,2);
 });

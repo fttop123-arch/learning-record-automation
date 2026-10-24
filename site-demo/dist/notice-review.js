@@ -49,7 +49,7 @@ export function createReview(notice,names,selected,onConfirm){
   for(const c of notice.candidates?.[key==='official'?'type_raw':key]||[]){const p=document.createElement('p');p.className='candidate-evidence';p.textContent='근거: '+c.evidence;wrap.append(p);if(key==='date'||key==='name'){const choose=document.createElement('button');choose.type='button';choose.textContent='이 후보 사용: '+c.value;choose.addEventListener('click',()=>{input.value=c.value;markDirty();});wrap.append(choose);}}
   box.append(wrap);
  }
- const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='추출한 공문 원문 보기';pre.textContent=notice.source_text||'가상 샘플';details.append(summary,pre);box.append(details);
+ const details=document.createElement('details'),summary=document.createElement('summary'),pre=document.createElement('pre');summary.textContent='추출한 공문 원문 보기';pre.textContent=notice.source_text||'추출된 원문이 없습니다.';details.append(summary,pre);box.append(details);
  const status=document.createElement('p');status.setAttribute('role','status');status.id='review-confirm-message';const confirm=document.createElement('button');confirm.type='button';confirm.id='confirm-education';confirm.className='confirm-education';confirm.textContent='교육정보 확인·적용';
  function markDirty(){status.textContent='수정된 교육정보를 확인·적용해주세요.';onConfirm(null);}
  for(const input of Object.values(controls))input.addEventListener('input',markDirty);

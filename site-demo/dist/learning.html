@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="ko">
-<head><link rel="stylesheet" href="./demo-access.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>서무_상시학습 등록 자동화</title><link rel="stylesheet" href="./style.css"><script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261024-columns"></script><link rel="stylesheet" href="./gyeongju-theme.css"></head>
+<head><link rel="stylesheet" href="./demo-access.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>서무_상시학습 등록 자동화</title><link rel="stylesheet" href="./style.css"><script src="./vendor/jszip.min.js" defer></script><script type="module" src="./app.js?v=20261024-compact"></script><link rel="stylesheet" href="./gyeongju-theme.css"></head>
 <body class="learning-page">
 <header><div class="brand"><img class="learning-logo" src="./assets/gyeongju-ci.png" alt="경주시" width="42" height="44"><span>서무업무 지원<span class="brand-sub">상시학습 교육실적</span></span></div><a class="home-link" href="./index.html">← 업무도우미 홈</a><button type="button" class="learning-help" id="learning-help-button">ⓘ 상시학습 도움말</button><span class="local">공개 시연판</span></header>
 <main>
   <div class="intro"><p class="eyebrow">LEARNING RECORD</p><h1>서무_상시학습 등록 자동화</h1><p>상시학습 인정 공문과 참석자 명단을 분석하여<br>교육실적 등록용 Excel을 자동 생성합니다.</p></div>
   <nav class="steps" aria-label="업무 순서"><span class="active">01 파일 첨부</span><span>02 분석·검토</span><span>03 확인값 선택</span><span>04 생성·다운로드</span></nav>
   <section id="alerts" class="alerts" role="alert" hidden><h2>확인 필요 목록</h2><ul id="alert-list"></ul></section>
-  <aside class="demo-notice"><strong>교육·시연용 시스템입니다. 실제 개인정보 및 내부자료를 업로드하지 마세요.</strong><p>파일은 이 브라우저 안에서만 분석하며 서버로 전송하거나 저장하지 않습니다.</p><button type="button" id="sample-button">샘플 데이터로 체험</button><button type="button" id="reset-button" class="secondary">입력·결과 초기화</button></aside><form id="upload-form" class="card">
+  <aside class="demo-notice"><strong>교육·시연용 시스템입니다. 실제 개인정보 및 내부자료를 업로드하지 마세요.</strong><p>파일은 이 브라우저 안에서만 분석하며 서버로 전송하거나 저장하지 않습니다.</p><button type="button" id="reset-button" class="secondary">입력·결과 초기화</button></aside><form id="upload-form" class="card">
     <div class="section-title"><div><span class="step">01</span><h2>파일 첨부</h2></div><span class="muted">기준 양식: 시연용 비식별 양식 사용</span></div>
     <div class="file-grid">
       <label class="file-card"><span class="file-kind">PDF · ODT · HWPX <b>필수</b></span><strong>교육실적 인정 공문</strong><span>교육정보와 인정시간이 명시된 공문</span><input type="file" name="notice" accept=".pdf,.odt,.hwpx" aria-label="교육실적 인정 공문 PDF, ODT 또는 HWPX"><small class="filename">파일을 선택해주세요</small></label>

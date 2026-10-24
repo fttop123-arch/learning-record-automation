@@ -1,11 +1,11 @@
-import {createColumnMapping} from './column-mapping.js?v=20261024-columns';
+import {createColumnMapping} from './column-mapping.js?v=20261024-compact';
 import {workflowStep,paintProgress} from './progress.js';
 import {requireDemoAccess} from './demo-access.js';
 await requireDemoAccess();
 import {createReview} from './notice-review.js';
 import {attachFileDrop,preventFileNavigation} from './file-drop.js';
 import {fileError,uploadIssues} from './file-validation.js';
-import {filterAttendees,employeeDirectory,lookupEmployee,matchType,demoData,spaces,listDepartments,searchDepartments,requireDepartmentChoice,initialDepartment} from './core.js?v=20261024-columns';
+import {filterAttendees,employeeDirectory,lookupEmployee,matchType,spaces,listDepartments,searchDepartments,requireDepartmentChoice,initialDepartment} from './core.js?v=20261024-compact';
 import {readWorkbook,loadReference,generateExcel} from './workbooks.js';
 import {extractNotice} from './notice-reader.js';
 import {withDeadline} from './async-utils.js';
@@ -33,7 +33,7 @@ async function loadAttendeeFile(file){
   attendeeBook=book;attendeeFile=file;rosterLoading=false;
   const panel=createColumnMapping(book.sheets,mapping=>{
    if(id!==rosterLoadId)return;attendeeMapping=mapping;invalidate();
-   try{const names=mapping?listDepartments(book.sheets,mapping):[];setDepartments(names);$('#live-status').textContent=mapping?'컬럼 연결이 적용되었습니다. 대상 부서를 선택해주세요.':'부서·성명 컬럼을 연결해주세요.';if(mapping&&!names.length)$('#department-status').textContent='선택한 부서 컬럼에 부서 값이 없습니다. 머리글 행과 컬럼 연결을 확인해주세요.';}
+   try{const names=mapping?listDepartments(book.sheets,mapping):[];setDepartments(names);$('#live-status').textContent=mapping?'컬럼 연결이 적용되었습니다. 대상 부서를 선택해주세요.':'명단의 컬럼 확인 안내를 확인해주세요.';if(mapping&&!names.length)$('#department-status').textContent='선택한 부서 컬럼에 부서 값이 없습니다. 머리글 행과 컬럼 연결을 확인해주세요.';}
    catch(error){attendeeMapping=null;setDepartments([]);$('#live-status').textContent=error.message;}
    sync();
   });
@@ -50,14 +50,14 @@ function alerts(messages=[]){$('#alert-list').replaceChildren(...messages.map(m=
 function fields(selector,entries){$(selector).replaceChildren(...entries.map(([label,value,wide])=>{const div=document.createElement('div');if(wide)div.className='wide';const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value??'확인 필요';div.append(dt,dd);return div;}));}
 function clearResult(){if(blobUrl)URL.revokeObjectURL(blobUrl);blobUrl=null;$('#download').removeAttribute('href');$('#completion').hidden=true;}
 const readyHint=document.createElement('p');readyHint.className='analysis-ready-hint';readyHint.setAttribute('role','status');$('#analyze-button').after(readyHint);
-function sync(){paintProgress([...document.querySelectorAll('.steps span')],workflowStep({hasAnalysis:!!analysis,reviewConfirmed:!!analysis?.review_confirmed,hasResult:!!blobUrl,busy}));for(const form of ['#upload-form','#generate-form'])for(const c of $(form).elements)c.disabled=busy;$('#department-search').disabled=busy||rosterLoading||!departments.length;$('#department-select').disabled=busy||rosterLoading||!departments.length;$('#analyze-button').disabled=busy||rosterLoading;$('#sample-button').disabled=busy||rosterLoading;$('#reset-button').disabled=false;$('#reset-button').textContent=busy||rosterLoading?'분석 취소·초기화':'입력·결과 초기화';$('#generate-button').disabled=busy;$('#welfare-warning').hidden=$('#welfare').value!=='Y';
+function sync(){paintProgress([...document.querySelectorAll('.steps span')],workflowStep({hasAnalysis:!!analysis,reviewConfirmed:!!analysis?.review_confirmed,hasResult:!!blobUrl,busy}));for(const form of ['#upload-form','#generate-form'])for(const c of $(form).elements)c.disabled=busy;$('#department-search').disabled=busy||rosterLoading||!departments.length;$('#department-select').disabled=busy||rosterLoading||!departments.length;$('#analyze-button').disabled=busy||rosterLoading;$('#reset-button').disabled=false;$('#reset-button').textContent=busy||rosterLoading?'분석 취소·초기화':'입력·결과 초기화';$('#generate-button').disabled=busy;$('#welfare-warning').hidden=$('#welfare').value!=='Y';
  const notice=document.querySelector('input[name="notice"]').files[0];
  const reason=busy?'파일을 처리하고 있습니다.':rosterLoading?'참석자 명단에서 부서를 읽고 있습니다.':!attendeeBook?'참석자 명단 Excel을 선택해주세요. 명단에는 소속(부서)·성명(이름) 컬럼이 필요합니다. 직급은 선택입니다.':!$('#department-select').value?'대상 부서를 목록에서 선택해주세요.':!notice?'교육실적 인정 공문을 선택해주세요.':[...document.querySelectorAll('input[type=file]')].some(input=>!!fileError(input.name,input.files[0]))?'첨부파일의 오류 안내를 확인하고 다시 선택해주세요.':'분석할 준비가 되었습니다.';
  readyHint.textContent=reason;
 }
 function failed(messages){alerts(messages);$('#live-status').textContent='분석을 완료하지 못했습니다. 확인 필요 목록을 확인하고 다시 시도해주세요.';$('#alerts').scrollIntoView({behavior:'smooth',block:'center'});}
 function invalidate(){analysis=null;clearResult();$('#analysis').hidden=true;alerts();$('#live-status').textContent='파일 또는 대상 부서가 변경되었습니다. 다시 분석해주세요.';sync();}
-function finish(notice,roster,directory,reference,isSample=false){
+function finish(notice,roster,directory,reference){
  for(const a of roster.attendees)a.employee_lookup=lookupEmployee(directory,a.department,a.name);
  const matchedType=matchType(notice.type_raw,reference.names),method=spaces(notice.method)==='집합교육'?1:null,warnings=[];
  for(const a of roster.attendees){if(a.status!=='대상 부서 일치')warnings.push(`${a.name}: ${a.status}`);if(a.employee_lookup.status!=='matched')warnings.push(`${a.name}: ${statusLabels[a.employee_lookup.status]}`);}
@@ -65,7 +65,7 @@ function finish(notice,roster,directory,reference,isSample=false){
  if(!matchedType.official)warnings.push('교육유형 공식 목록과 단일 일치하지 않습니다.');
  if(method===null)warnings.push('지원하는 학습방법이 아닙니다. 확인이 필요합니다.');
  const can_generate=!!roster.attendees.length&&roster.attendees.every(a=>a.status==='대상 부서 일치')&&!!matchedType.official&&method!==null;
- analysis={notice,roster,reference:matchedType,method_code:method,warnings,can_generate:false,isSample};
+ analysis={notice,roster,reference:matchedType,method_code:method,warnings,can_generate:false};
  document.querySelector('.notice-review')?.remove();
  const editor=createReview(notice,reference.names,matchedType.official,result=>{
   if(!analysis)return;
@@ -81,16 +81,15 @@ function finish(notice,roster,directory,reference,isSample=false){
 }
 function render(){
  const a=analysis,n=a.notice;
- if(!a.isSample&&!document.querySelector('input[name="employees"]').files.length&&!a.warnings.includes('번호 명부가 없습니다. 개인식별번호를 빈셀로 진행합니다.'))a.warnings.push('번호 명부가 없습니다. 개인식별번호를 빈셀로 진행합니다.');
+ if(!document.querySelector('input[name="employees"]').files.length&&!a.warnings.includes('번호 명부가 없습니다. 개인식별번호를 빈셀로 진행합니다.'))a.warnings.push('번호 명부가 없습니다. 개인식별번호를 빈셀로 진행합니다.');
  fields('#education',[['교육명',n.name,true],['교육일',n.date],['시간',n.start&&n.end?`${n.start} ~ ${n.end}`:'공문에 미기재 (등록에는 사용하지 않음)'],['교육장소',n.place||'공문에 미기재'],['학습방법',`${n.method} / 코드 ${a.method_code??'미확정'}`],['교육유형 공식명',a.reference.official,true],['인정시간',n.hours===null?'확인 필요':`${n.hours}시간 ${n.minutes}분`]]);
  fields('#source-info',[['교육유형 원문',n.type_raw,true],['공식 목록 일치',`${a.reference.matches.length}개`],['교육시작일',n.date],['교육종료일',n.date],['제목',n.name],['내용',n.name,true]]);
  $('#attendee-count').textContent=a.roster.attendees.length+'명';
  $('#attendees').replaceChildren(...a.roster.attendees.map(person=>{const tr=document.createElement('tr');for(const value of [person.name||'(성명 없음)',person.rank||'미제공',person.department,person.employee_lookup.employee_id||'미입력']){const td=document.createElement('td');td.textContent=value;tr.append(td);}const td=document.createElement('td'),span=document.createElement('span'),small=document.createElement('small');span.className='status'+(person.employee_lookup.status==='matched'?'':' review');span.textContent=statusLabels[person.employee_lookup.status];small.textContent=person.employee_lookup.reason;td.append(span,small);tr.append(td);return tr;}));
- alerts(a.warnings);$('#analysis').hidden=false;$('#live-status').textContent=(a.isSample?'가상 샘플 모드입니다. TEST001/TEST002는 시연용 번호입니다. ':'')+`분석이 완료되었습니다. 대상자 ${a.roster.attendees.length}명. `+(a.roster.attendees.length?'확인값을 검토해주세요.':'정확한 부서명을 확인한 후 다시 분석해주세요.');
+ alerts(a.warnings);$('#analysis').hidden=false;$('#live-status').textContent=`분석이 완료되었습니다. 대상자 ${a.roster.attendees.length}명. `+(a.roster.attendees.length?'확인값을 검토해주세요.':'정확한 부서명을 확인한 후 다시 분석해주세요.');
  if(!a.roster.attendees.length)$('#alerts').scrollIntoView({behavior:'smooth',block:'center'});
 
 }
-$('#sample-button').addEventListener('click',async()=>{if(busy||rosterLoading)return;invalidate();const demo=demoData();if(!departments.length)setDepartments([...new Set(demo.roster.attendees.map(a=>a.department))]);const id=++operationId;activeController=new AbortController();busy=true;sync();$('#live-status').textContent='가상 샘플과 기준 양식을 준비하고 있습니다…';try{const reference=await getReference(activeController.signal);if(id!==operationId)return;const department=requireDepartmentChoice(departments,$('#department-select').value);demo.roster.attendees=demo.roster.attendees.filter(a=>a.department===department);finish(demo.notice,demo.roster,demo.directory,reference,true);}catch(e){if(id===operationId)failed([e.message]);}finally{if(id===operationId){busy=false;activeController=null;sync();}}});
 $('#upload-form').noValidate=true;
 $('#upload-form').addEventListener('submit',async event=>{
  event.preventDefault();if(busy||rosterLoading)return;invalidate();const data=new FormData(event.target),errors=[];
@@ -99,7 +98,7 @@ $('#upload-form').addEventListener('submit',async event=>{
   for(const {name,message}of issues){const input=document.querySelector(`input[name="${name}"]`),hint=document.getElementById(`${name}-file-error`);hint.textContent=message;hint.hidden=false;input.setAttribute('aria-invalid','true');input.parentElement.classList.add('invalid-file');}
   const input=document.querySelector(`input[name="${issues[0].name}"]`);input.parentElement.scrollIntoView({behavior:'smooth',block:'center'});input.focus({preventScroll:true});$('#live-status').textContent=issues.map(i=>i.message).join(' ');return;
  }
- if(!attendeeMapping){$('#column-mapping')?.scrollIntoView({behavior:'smooth',block:'center'});$('#live-status').textContent='참석자 명단의 부서·성명 컬럼을 연결하고 적용해주세요.';return;}
+ if(!attendeeMapping){$('#column-mapping')?.scrollIntoView({behavior:'smooth',block:'center'});$('#live-status').textContent='참석자 명단의 안내를 확인해주세요. 필수 컬럼이 없으면 파일을 수정·교체하고, 후보가 여러 개면 사용할 항목을 선택해주세요.';return;}
  let department;
  try{department=requireDepartmentChoice(listDepartments(attendeeBook?.sheets||[],attendeeMapping),data.get('department'));}catch(error){$('#department-status').textContent=error.message;$('#department-select').scrollIntoView({behavior:'smooth',block:'center'});if(!$('#department-select').disabled)$('#department-select').focus({preventScroll:true});$('#live-status').textContent=error.message;return;}
  const id=++operationId;activeController=new AbortController();const signal=activeController.signal;
