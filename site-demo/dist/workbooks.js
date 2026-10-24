@@ -1,4 +1,4 @@
-import {personDuration} from './durations.js?v=20261024-duration';
+import {personDuration} from './durations.js?v=20261024-duration-alias';
 /* XLSX 원본 ZIP의 필요한 셀만 변경. 외부 서버 요청이나 파일 저장 API 없음. */
 const MAIN='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const els=(node,name)=>Array.from(node.getElementsByTagNameNS(MAIN,name));

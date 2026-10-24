@@ -254,3 +254,17 @@ test('개인시간 Excel: H/I 개별 출력·빈값 차단·수정 후 출력',a
  a.roster.attendees[1].duration_input.raw='';await assert.rejects(()=>generateExcel(template,a,choices),/개인별 인정시간/);
  a.roster.attendees[1].duration_override={hours:1,minutes:0};b=await readWorkbook(await generateExcel(template,a,choices));rows=b.sheets.find(s=>s.name==='Sheet1').rows;assert.deepEqual(rows[2].slice(7,9),[1,0]);assert.equal(rows[2][14],null);
 });
+
+test('시간 별칭: 모든 내부 공백·이수시간·인증시간·단위 인식',()=>{
+ for(const alias of ['인정시간','이수시간','인증시간','교육시간'])for(const header of [alias,[...alias].join(' '),[...alias].join('  ')]){
+ const sheets=[{name:'S',rows:[['부서','이름',header],['디지털정책과','가상직원','2시간 30분']]}];const person=filterAttendees(sheets,'디지털정책과').attendees[0];const duration=personDuration(person,{hours:9,minutes:0});assert.equal(duration.hours,2);assert.equal(duration.minutes,30);
+ if(alias==='인증시간')assert.match(duration.source,/오타로 간주/);
+ const column=rosterDurationColumns([header+' ( 시 간 )'])[0];assert.equal(column.unit,'hours');assert.deepEqual(parseDuration(1.5,column.unit),{hours:1,minutes:30});
+ const notice=extractCandidates(header+': 2시간 30분');assert.equal(notice.hours,2);assert.equal(notice.minutes,30);
+ }
+});
+test('시간 별칭: 동의어 중복은 차단·교육시간보다 실적시간 우선',()=>{
+ const row=['부서','성명','교육시간','이 수 시 간'];assert.equal(rosterDurationColumns(row)[0].index,3);
+ const sheets=[{name:'S',rows:[['부서','이름','인정시간','이수시간'],['디지털정책과','가상직원','2시간','3시간']]}];assert.equal(personDuration(filterAttendees(sheets,'디지털정책과').attendees[0],{hours:9,minutes:0}).valid,false);
+ assert.match(extractCandidates('인 증 시 간: 3시간').candidates.hours[0].evidence,/오타로 간주/);
+});

@@ -24,9 +24,9 @@ export function extractCandidates(text,{filename=''}={}){
   for(const m of line.matchAll(/차수\s*별\s*(\d+)\s*시간(?:\s*(\d+)\s*분)?\s*인정/g)){
    if(Number(m[2]||0)<60){const total=Number(m[1])*60+Number(m[2]||0);if(total>0){add('hours',total,line);const c=candidates.hours.find(c=>c.value===total);c.per_session=true;c.evidence=line+' — 차수당 시간인지 확인 필요. 참석 차수를 곱하지 않습니다.';}}
   }
-  if(/(인정|실적|학습).*시간/.test(label)){
+  if(/(인정|이수|인증|교육|실적|학습).*시간/.test(label)){
    const m=value?.match(/^(?:(\d+)\s*시간)?\s*(?:(\d+)\s*분)?\s*$/);
-   if(m&&(m[1]||m[2])&&Number(m[2]||0)<60)add('hours',Number(m[1]||0)*60+Number(m[2]||0),line);
+   if(m&&(m[1]||m[2])&&Number(m[2]||0)<60)add('hours',Number(m[1]||0)*60+Number(m[2]||0),line+(label.startsWith('인증')?' — 인정시간의 오타로 간주했습니다. 확인해주세요.':label.startsWith('교육')?' — 실적인정 시간으로 사용 가능한지 확인해주세요.':''));
   }
  }
  if(!candidates.name.length){

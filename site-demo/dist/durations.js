@@ -9,12 +9,12 @@ export function parseDuration(value,unit=''){
 export function rosterDurationColumns(row){
  const labels=row.map(v=>String(v??'').replace(/\s/g,''));
  const find=kind=>labels.flatMap((label,index)=>new RegExp('^'+kind+'(?:\\((?:시간|분)\\))?$').test(label)?[{index,label,unit:label.endsWith('(시간)')?'hours':label.endsWith('(분)')?'minutes':''}]:[]);
- const credit=find('인정시간'),training=find('교육시간');return credit.length?credit:training;
+ const credit=['인정시간','이수시간','인증시간'].flatMap(find).sort((a,b)=>a.index-b.index),training=find('교육시간');return credit.length?credit:training;
 }
 export function personDuration(person,notice){
  if(person.duration_pending)return {hours:null,minutes:null,source:'수정한 시간 적용 필요',valid:false};
  if(person.duration_override)return {...person.duration_override,source:'사용자 확인',valid:true};
- if(person.duration_input){const input=person.duration_input,value=input.ambiguous?null:parseDuration(input.raw,input.unit);return value?{...value,source:input.label+' · 명단',valid:true}:{hours:null,minutes:null,source:input.ambiguous?'시간 컬럼 중복: 파일 수정 필요':input.label+' · 빈칸/단위/형식 확인 필요',valid:false};}
+ if(person.duration_input){const input=person.duration_input,value=input.ambiguous?null:parseDuration(input.raw,input.unit);return value?{...value,source:input.label+' · 명단'+(input.label.startsWith('인증시간')?' · 인정시간의 오타로 간주했습니다. 확인해주세요.':input.label.startsWith('교육시간')?' · 실적인정 시간으로 사용 가능한지 확인해주세요.':''),valid:true}:{hours:null,minutes:null,source:input.ambiguous?'시간 컬럼 중복: 파일 수정 필요':input.label+' · 빈칸/단위/형식 확인 필요',valid:false};}
  const value=Number.isInteger(notice.hours)&&Number.isInteger(notice.minutes)&&notice.hours>=0&&notice.minutes>=0&&notice.minutes<60&&notice.hours*60+notice.minutes>0;
  return {hours:notice.hours,minutes:notice.minutes,source:'공문 공통값',valid:!!value};
 }

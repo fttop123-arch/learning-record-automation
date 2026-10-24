@@ -1,4 +1,4 @@
-import {rosterDurationColumns} from './durations.js?v=20261024-duration';
+import {rosterDurationColumns} from './durations.js?v=20261024-duration-alias';
 /* 브라우저와 Node 테스트에서 함께 사용하는 순수 업무 규칙. */
 export const trim = value => typeof value === 'string' ? value.trim() : '';
 export const spaces = value => String(value ?? '').replace(/\s/g, '');
