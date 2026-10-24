@@ -1,0 +1,2 @@
+export const LEARNING_METHODS=[{code:1,name:'집합과정',aliases:['집합과정','집합교육']},{code:2,name:'사이버과정',aliases:['사이버과정','사이버교육','온라인교육']},{code:3,name:'집합+사이버과정',aliases:['집합+사이버과정','집합+사이버교육','집합+사이버']},{code:4,name:'기타',aliases:['기타']}];
+export function learningMethod(value){const key=String(value??'').replace(/\s/g,'').replace(/＋/g,'+');return LEARNING_METHODS.find(m=>m.aliases.includes(key))??null;}

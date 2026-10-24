@@ -268,3 +268,39 @@ test('시간 별칭: 동의어 중복은 차단·교육시간보다 실적시간
  const sheets=[{name:'S',rows:[['부서','이름','인정시간','이수시간'],['디지털정책과','가상직원','2시간','3시간']]}];assert.equal(personDuration(filterAttendees(sheets,'디지털정책과').attendees[0],{hours:9,minutes:0}).valid,false);
  assert.match(extractCandidates('인 증 시 간: 3시간').candidates.hours[0].evidence,/오타로 간주/);
 });
+
+const {learningMethod,LEARNING_METHODS}=await import('../dist/methods.js');
+const {registrationPlan}=await import('../dist/durations.js');
+test('학습방법: 네 가지와 공백 별칭·미지원 값',()=>{
+ assert.deepEqual(LEARNING_METHODS.map(m=>m.code),[1,2,3,4]);
+ for(const [name,code]of [['집합교육',1],['집 합 과 정',1],['사이버교육',2],['사이버과정',2],['집합 ＋ 사이버과정',3],['기타',4]])assert.equal(learningMethod(name).code,code);
+ assert.equal(learningMethod('알 수 없는 방법'),null);
+});
+test('등록계획: 0시간 제외와 빈칸·수정대기·동명이인 사유 구분',()=>{
+ const people=[{name:'가상A',row:2,status:'대상 부서 일치',duration_input:{raw:'0',unit:''}},{name:'가상B',row:3,status:'대상 부서 일치',duration_input:{raw:'1시간',unit:''}},{name:'가상C',row:4,status:'대상 부서 일치',duration_input:{raw:'',unit:''}}];
+ let plan=registrationPlan(people,{});assert.equal(plan.excluded.length,1);assert.equal(plan.included.length,1);assert.match(plan.issues[0],/가상C.*4행.*빈칸/);
+ plan=registrationPlan(people.slice(0,1),{});assert.match(plan.issues[0],/모든 대상자.*0시간/);
+ people[1].duration_pending=true;assert.match(registrationPlan(people.slice(1,2),{}).issues[0],/수정한 시간 적용/);
+ delete people[1].duration_pending;people[1].status='동명이인 확인 필요';assert.match(registrationPlan(people.slice(1,2),{}).issues[0],/가상B.*동명이인/);
+ assert.equal(parseDuration('0'),null);assert.deepEqual(parseDuration('0','',true),{hours:0,minutes:0});
+});
+test('Excel: 네 가지 J열 코드·0시간 제외 후 연속 행/수식·전체 0 차단',async()=>{
+ for(const method of LEARNING_METHODS){const a=analysis();a.notice.method=method.name;
+ a.roster.attendees[0].duration_input={label:'이수시간',raw:'0시간',unit:''};a.roster.attendees[1].duration_input={label:'이수시간',raw:'1시간 30분',unit:''};
+ const choices={required:'N',welfare:'N',participation:'0'},result=await readWorkbook(await generateExcel(template,a,choices)),sheet=result.sheets.find(s=>s.name==='Sheet1');
+ assert.equal(sheet.rows.length,2);assert.equal(sheet.rows[1][0],'문형식');assert.equal(sheet.rows[1][9],method.code);assert.deepEqual(sheet.rows[1].slice(7,9),[1,30]);
+ const cell=Array.from(sheet.doc.getElementsByTagNameNS('*','c')).find(c=>c.getAttribute('r')==='D2');assert.match(cell.textContent,/MATCH\(C2,/);
+ a.roster.attendees[1].duration_input.raw='0분';await assert.rejects(()=>generateExcel(template,a,choices),/모든 대상자/);
+ }
+});
+
+test('검토 화면: 개인시간이면 공통입력 숨김·네 방법 선택·빈 공통시간으로 확인',async()=>{
+ const {createReview}=await import('../dist/notice-review.js'),old=globalThis.document;
+ class Element{constructor(tag){this.tagName=tag;this.children=[];this.events={};this.value='';this.classList={add(){},toggle(){}};}append(...nodes){this.children.push(...nodes);}prepend(...nodes){this.children.unshift(...nodes);}setAttribute(){}addEventListener(name,fn){this.events[name]=fn;}scrollIntoView(){}focus(){}}
+ const nodes=[];globalThis.document={createElement(tag){const e=new Element(tag);nodes.push(e);return e;}};
+ try{let confirmed;const notice={...demoData().notice,hours:null,minutes:null};createReview(notice,types,types[0],v=>confirmed=v,{individualTimes:true});
+ const hours=nodes.find(n=>n.name==='hours'),minutes=nodes.find(n=>n.name==='minutes'),method=nodes.find(n=>n.name==='method');
+ assert.equal(hours.disabled,true);assert.equal(minutes.disabled,true);assert.ok(nodes.some(n=>n.children.includes(hours)&&n.hidden));assert.equal(method.children.length,5);
+ method.value='사이버과정';nodes.find(n=>n.id==='confirm-education').events.click();assert.equal(confirmed.notice.hours,null);assert.equal(confirmed.notice.minutes,null);assert.equal(confirmed.notice.method,'사이버과정');
+ }finally{globalThis.document=old;}
+});
