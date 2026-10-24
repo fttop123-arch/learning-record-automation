@@ -1,4 +1,4 @@
-import {LEARNING_METHODS,learningMethod} from './methods.js?v=20261024-review-flow';
+import {LEARNING_METHODS,learningMethod} from './methods.js?v=20261024-default-hours';
 import {parseNotice,spaces} from './core.js';
 // 제목은 확정값이 아니라 사용자가 검토할 후보로만 제안한다.
 export function titleEducationName(title){
@@ -51,7 +51,7 @@ export function createReview(notice,names,selected,onConfirm,{individualTimes=fa
  const box=document.createElement('section');box.className='card notice-review';
  const title=document.createElement('h2');title.textContent='교육정보 검토·수정';box.append(title);
  const intro=document.createElement('p');intro.textContent='후보가 하나인 값도 원문과 비교해주세요. 여러 후보 또는 미발견 항목은 직접 선택·입력한 뒤 확인합니다.'+(individualTimes?' 명단의 개인별 시간이 우선됩니다. 교육시간 컬럼은 실적인정 시간으로 사용해도 되는지 확인해주세요. 공통시간은 명단에 시간 컬럼이 없을 때만 사용합니다.':'');box.append(intro);
- if(individualTimes){const hint=document.createElement('p');hint.textContent='명단의 개인별 인정시간을 사용합니다. 공통시간 입력은 필요하지 않습니다.';hint.setAttribute('role','status');box.append(hint);}
+ if(individualTimes){const hint=document.createElement('p');hint.textContent='명단의 개인별 인정시간을 사용합니다. 공통시간 입력은 필요하지 않습니다. 단위 없는 숫자는 시간으로 해석합니다(2 = 2시간, 2.5 = 2시간 30분). 머리글에 (분)이 있으면 분으로 해석합니다.';hint.setAttribute('role','status');box.append(hint);}
  const controls={};
  for(const [key,label,type]of [['name','교육명','text'],['date','교육일','date'],['hours','인정시간(시간)','number'],['minutes','인정시간(분)','number'],['method','학습방법','select'],['official','교육유형 공식명','select']]){
   const wrap=document.createElement('label');wrap.textContent=label;const input=document.createElement(type==='select'?'select':'input');input.name=key;

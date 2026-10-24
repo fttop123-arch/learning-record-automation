@@ -1,4 +1,4 @@
-import {attendeeHeader,spaces} from './core.js?v=20261024-review-flow';
+import {attendeeHeader,spaces} from './core.js?v=20261024-default-hours';
 export function mappingChoices(sheets){
  const candidates=[];let hasDepartment=false,hasName=false;
  sheets.forEach((sheet,sheetIndex)=>sheet.rows.forEach((row,headerRow)=>{

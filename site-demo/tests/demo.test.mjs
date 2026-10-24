@@ -238,7 +238,7 @@ test('개인시간: 인정시간 우선·교육시간 대체·빈칸은 공통�
  assert.equal(personDuration(people[0],{hours:3,minutes:0}).hours,2);assert.equal(personDuration(people[1],{hours:3,minutes:0}).valid,false);
  assert.deepEqual(rosterDurationColumns(['교육 시간 (시간)']),[{index:0,label:'교육시간(시간)',unit:'hours'}]);
  assert.equal(personDuration({}, {hours:3,minutes:0}).source,'공문 공통값');
- assert.equal(personDuration({duration_input:{raw:'3',unit:''}},{hours:2,minutes:0}).valid,false);
+ assert.equal(personDuration({duration_input:{raw:'3',unit:''}},{hours:2,minutes:0}).hours,3);
  assert.equal(personDuration({duration_input:{ambiguous:true,raw:'2시간'}},{hours:2,minutes:0}).valid,false);
  people[1].duration_override={hours:1,minutes:30};assert.equal(personDuration(people[1],{}).valid,true);people[1].duration_pending=true;assert.equal(personDuration(people[1],{}).valid,false);
 });
@@ -303,4 +303,15 @@ test('검토 화면: 개인시간이면 공통입력 숨김·네 방법 선택·
  assert.equal(hours.disabled,true);assert.equal(minutes.disabled,true);assert.ok(nodes.some(n=>n.children.includes(hours)&&n.hidden));assert.equal(method.children.length,5);
  method.value='사이버과정';nodes.find(n=>n.id==='confirm-education').events.click();assert.equal(confirmed.notice.hours,null);assert.equal(confirmed.notice.minutes,null);assert.equal(confirmed.notice.method,'사이버과정');
  }finally{globalThis.document=old;}
+});
+
+test('단위 없는 명단 숫자: 시간 기본값·분 예외·소수시간 H/I 출력',async()=>{
+ for(const alias of ['인정시간','이수시간','교육시간','인증시간']){
+ const sheets=[{name:'S',rows:[['부서','성명',alias],['디지털정책과','가상A',2],['디지털정책과','가상B','2.5'],['디지털정책과','가상C',0],['디지털정책과','가상D','']]}];
+ const people=filterAttendees(sheets,'디지털정책과').attendees;
+ assert.deepEqual(people.slice(0,3).map(p=>{const d=personDuration(p,{});return [d.hours,d.minutes];}),[[2,0],[2,30],[0,0]]);assert.equal(personDuration(people[3],{}).valid,false);
+ const a=analysis();a.roster.attendees=people.slice(0,3).map(p=>({...p,employee_lookup:{status:'no_file'}}));const book=await readWorkbook(await generateExcel(template,a,{required:'N',welfare:'N',participation:'0'}));assert.deepEqual(book.sheets.find(s=>s.name==='Sheet1').rows.slice(1).map(r=>r.slice(7,9)),[[2,0],[2,30]]);
+ }
+ const sheets=[{name:'S',rows:[['부서','名前','성명','이 수 시 간 ( 분 )'],['디지털정책과','','가상A',90]]}];const d=personDuration(filterAttendees(sheets,'디지털정책과').attendees[0],{});assert.deepEqual([d.hours,d.minutes],[1,30]);
+ assert.deepEqual(parseDuration('30분','hours'),{hours:0,minutes:30});assert.equal(parseDuration('-2','hours'),null);assert.equal(parseDuration('잘못된 값','hours'),null);
 });
